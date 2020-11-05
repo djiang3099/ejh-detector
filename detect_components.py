@@ -70,8 +70,8 @@ def detect_components(img):
     canny = cv2.Canny(closing, 100, 200)
     canny_dil = cv2.dilate(canny, kernel)   # Dilate to join them up 
 
-    # Identify ROI for circuit and crop it out
-    _, contours, _ = cv2.findContours(canny_dil, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # Identify ROI for circuit and crop it out, TODO: Use 4sided polygon
+    contours, _ = cv2.findContours(canny_dil, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     best_contour = None
     for contour in contours: 
         if best_contour is None:
@@ -115,7 +115,7 @@ def detect_components(img):
 
     # Get the bounding boxes for all the remaining components
     bboxes = np.array([0,0,0,0])
-    _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
         x,y,w,h = cv2.boundingRect(contour)
 
