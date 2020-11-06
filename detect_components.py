@@ -28,6 +28,30 @@ def crop_n_rotate(img, box, size):
     warped = cv2.warpPerspective(img, transform, size)
     return warped
 
+def get_mask(img):
+    # Gaussian Blur
+    blur = cv2.GaussianBlur(img, (5,5), 0)
+    blur = cv2.GaussianBlur(blur, (5,5), 0)
+
+    # Adaptive thresholding to binarise the image
+    th3 = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+                cv2.THRESH_BINARY_INV, 11, 2)
+    # cv2.imshow('thr', th3)            
+    # th3 = cv2.bitwise_not(th3)
+    
+    th3 = cv2.copyMakeBorder(th3, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[0,0,0])
+    
+
+    # Closing operation to fill holes
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+    closing = cv2.morphologyEx(th3, cv2.MORPH_CLOSE, kernel, iterations=2)      ##### TODO: Maybe iterations needs to be tuned
+    # closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
+    # closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
+
+    # Erosion to get rid of noise
+    closing = cv2.erode(closing, kernel, iterations=1)
+    return closing
+
 def detect_components(img):
     # Resize the image to fit on the screen
     height, width = img.shape[:2]
@@ -46,28 +70,13 @@ def detect_components(img):
 
     # Preprocess the image to extract components
     # TODO: Handle images where only part of the page is captured and there's not uniform background
-    # Gaussian Blur
-    blur = cv2.GaussianBlur(gray, (5,5), 0)
-    blur = cv2.GaussianBlur(blur, (5,5), 0)
-
-    # Adaptive equalisation on the image to get more uniform lighting
-    th3 = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
-                cv2.THRESH_BINARY, 11, 2)
-    th3 = cv2.bitwise_not(th3)
-    th3 = cv2.copyMakeBorder(th3, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[0,0,0])
-
-    # Closing operation to fill holes
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-    mid_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25,25))
-    big_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (35,35))
-    closing = cv2.morphologyEx(th3, cv2.MORPH_CLOSE, kernel)
-    closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
-
-    # Erosion to get rid of noise
-    closing = cv2.erode(closing, kernel, iterations=1)
-
+    closing = get_mask(gray)
+    # cv2.imshow('closing', closing)
+    # cv2.waitKey(0)
+    
     # Canny edge detection 
     canny = cv2.Canny(closing, 100, 200)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
     canny_dil = cv2.dilate(canny, kernel)   # Dilate to join them up 
 
     # Identify ROI for circuit and crop it out, TODO: Use 4sided polygon
@@ -79,20 +88,20 @@ def detect_components(img):
         elif cv2.contourArea(contour) > cv2.contourArea(best_contour):
             best_contour = contour
 
-    cv2.imshow('canny_dil', canny_dil)
+    # cv2.imshow('canny_dil', canny_dil)
     # print('Press any key to continue...')
     # cv2.waitKey(0)
 
     # Get the min enclosing rectangle, should contain the full circuit
     rect = cv2.minAreaRect(best_contour)
     box = np.int0(cv2.boxPoints(rect))  # Box points are clockwise starting from the lowest one
-    scale = 0.1
-    big_box = enlarge_rotated_rect(box, scale)
+    crop_margin = 0.1
+    big_box = enlarge_rotated_rect(box, crop_margin)
     cv2.drawContours(markup, [big_box], 0, (0,0,255), 2)
 
     # Extract this ROI and straighten it
-    roi_width = int((1+scale)*rect[1][0])
-    roi_height = int((1+scale)*rect[1][1])
+    roi_width = int((1+crop_margin)*rect[1][0])
+    roi_height = int((1+crop_margin)*rect[1][1])
     cropped = crop_n_rotate(img_pad, big_box, (roi_width, roi_height))
 
     # Rescale the cropped image to normalise
@@ -102,42 +111,94 @@ def detect_components(img):
         scale = roi_height/lim_dim
 
     cropped = cv2.resize(cropped, ( int(roi_width/scale), int(roi_height/scale) ), interpolation = cv2.INTER_CUBIC)
-    cv2.imshow('cropped', cropped)
+    # cv2.imshow('cropped', cropped)
 
-    # Another big kernel closing operation 
-    mask = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, big_kern)
+    ##### Perform component extraction on this cropped image #####
+    # Gaussian Blur
+    gray_crop = cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY)
+    thr_crop = get_mask(gray_crop)
+    cv2.imshow('thr cropped', thr_crop)
+
+    # Get the relative scale of the circuit components
+    canny_crop = cv2.Canny(thr_crop, 100, 200)
+    scale = cv2.countNonZero(canny_crop) / cv2.countNonZero(thr_crop)
+    print(scale)
+
+    big_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (35,35))
+
+    # Closing operation to turn components into blobs
+    mask = cv2.morphologyEx(thr_crop, cv2.MORPH_CLOSE, big_kern)
+    cv2.imshow('mask', mask)
+    # cv2.waitKey(0)
 
     # Med erosion to get rid of lines
-    mask = cv2.erode(mask, mid_kern, iterations=1)
+    init_cont = len(cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2])
+    max_cont = init_cont
+    peaked = False
+    conts = []
+    for i in range(3,25):
+        mid_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (i,i))
+        mask2 = cv2.erode(mask, mid_kern, iterations=1)
+        contours, _ = cv2.findContours(mask2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        # print(len(contours))
+        conts.append(len(contours))
+        if max_cont < len(contours): 
+            if len(contours) - max_cont > 2:
+                peaked = True
+                # print("Peaked!")
+            max_cont = len(contours)
+        elif (max_cont+init_cont)/2 >= len(contours) and peaked:
+            print("Peak found at kernel size", i)
+            break
+        # cv2.imshow('mask', mask2)
+        # cv2.waitKey(0)
 
+    if not peaked:
+        line_width = conts.index(max(conts)) 
+        print('Peak asssumed to be at', line_width)
+    else:
+        line_width = i
+    line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (line_width,line_width))
+    mask3 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, line_kern)
+    cv2.imshow('mask3', mask3)
+    # cv2.waitKey(0)
+    
     # Med dilation to get the component shapes back up to size
-    mask = cv2.dilate(mask, mid_kern, iterations=1)
+    mask = cv2.dilate(mask3, line_kern, iterations=int(2**(12/line_width)+4))
+    cv2.imshow('mask', mask)
+    # cv2.waitKey(0)
 
     # Get the bounding boxes for all the remaining components
     bboxes = np.array([0,0,0,0])
     contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
         x,y,w,h = cv2.boundingRect(contour)
+        x = x-20
+        y = y-20
 
         # Reject bboxes based on aspect ratio
         if 3 > w/h > 0.33:
             # Blow up the contour a bit to make sure all components are fully captured
-            cv2.rectangle(markup, (int(x-0.1*w), int(y-0.1*h)), (int(x+1.1*w), int(y+1.1*h)), (0,255,0), 2)
-            cv2.putText(markup, str(cv2.contourArea(contour)), (x,y+h), cv2.FONT_HERSHEY_COMPLEX, 1, (0,70,255))
+            cv2.rectangle(cropped, (int(x-0.1*w), int(y-0.1*h)), (int(x+1.1*w), int(y+1.1*h)), (0,255,0), 2)
+            cv2.putText(cropped, str(cv2.contourArea(contour)), (x,y+h), cv2.FONT_HERSHEY_COMPLEX, 1, (0,70,255))
 
             # Store the bbox
             bboxes = np.vstack( (bboxes, np.array([x,y,w,h])) )
 
     # cv2.imshow('image', cv2.hconcat([gray, canny, closing, mask]))
-    cv2.imshow('markup', markup)
+    cv2.imshow('cropped', cropped)
     print('Press any key to continue...')
     cv2.waitKey(0)
     return bboxes[1:]
 
 if __name__ == '__main__':
     # Import images 
-    for i in range(1,7):
+    for i in range(1,9):
         path = './Data/Circuits/' + str(i) + '.jpg'
         img = cv2.imread(path)
         bboxes = detect_components(img)
-        # print(bboxes)
+    # names = ['5','10','15','15manny','20','25','35','40','40many','60','70','70_2','80','80_2','80_3','90','90_2']
+    # for i in range(1, len(names)):
+    #     path = './scale/' + names[i] + '.jpg'
+    #     img = cv2.imread(path)
+    #     bboxes = detect_components(img)
