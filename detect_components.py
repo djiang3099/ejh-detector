@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import time
 
 def enlarge_rotated_rect(box, scale=0.05):
     pt1 = box[0]
@@ -28,6 +29,20 @@ def crop_n_rotate(img, box, size):
     warped = cv2.warpPerspective(img, transform, size)
     return warped
 
+def remove_noise(img):
+    mask = np.zeros(img.shape[:2], dtype="uint8")
+    contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    areas = np.array([])
+    for contour in contours: 
+        areas = np.append(areas, cv2.contourArea(contour))
+
+    avg = np.mean(areas)
+    idx = np.where(areas > 300)[0]
+    filt_cnt = np.array(contours)[idx]
+    cv2.drawContours(mask, filt_cnt, -1, 255, 1)
+
+    return mask
+
 def get_mask(img):
     # Gaussian Blur
     blur = cv2.GaussianBlur(img, (5,5), 0)
@@ -48,8 +63,17 @@ def get_mask(img):
     # closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
     # closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
 
-    # Erosion to get rid of noise
     closing = cv2.erode(closing, kernel, iterations=1)
+    cv2.imshow('thr', closing)
+    # Erosion to get rid of noise
+    tic = time.perf_counter()
+    # for i in range(1,10):
+    closing = remove_noise(closing)
+    toc = time.perf_counter()
+    print(f"remove noise {toc - tic:0.4f} seconds")
+    # cv2.imshow('noise', closing)
+    # cv2.waitKey(0)
+
     return closing
 
 def detect_components(img):
@@ -128,51 +152,64 @@ def detect_components(img):
 
     # Closing operation to turn components into blobs
     mask = cv2.morphologyEx(thr_crop, cv2.MORPH_CLOSE, big_kern)
-    cv2.imshow('mask', mask)
+    # cv2.imshow('mask', mask)
     # cv2.waitKey(0)
 
     # Med erosion to get rid of lines
     init_cont = len(cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2])
     max_cont = init_cont
     peaked = False
+    found = False
     conts = []
     for i in range(3,25):
         mid_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (i,i))
         mask2 = cv2.erode(mask, mid_kern, iterations=1)
         contours, _ = cv2.findContours(mask2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-        # print(len(contours))
+        print(len(contours))
         conts.append(len(contours))
         if max_cont < len(contours): 
             if len(contours) - max_cont > 2:
                 peaked = True
-                # print("Peaked!")
+                print("Peaked!")
             max_cont = len(contours)
         elif (max_cont+init_cont)/2 >= len(contours) and peaked:
             print("Peak found at kernel size", i)
+            found = True
             break
-        # cv2.imshow('mask', mask2)
-        # cv2.waitKey(0)
+        cv2.imshow('mask', mask2)
+        # cv2.waitKey(0) 
 
-    if not peaked:
-        line_width = conts.index(max(conts)) 
+    # Not found when the circuit is dense
+    if not found:
+        line_width = (conts.index(max(conts)) ) *2
         print('Peak asssumed to be at', line_width)
     else:
-        line_width = i
+        line_width = i*2
+
+    # Do it all over again, moderated by the linewidth
+    big_line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3*line_width,3*line_width))
     line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (line_width,line_width))
-    mask3 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, line_kern)
-    cv2.imshow('mask3', mask3)
-    # cv2.waitKey(0)
+
+    # Closing operation to turn components into blobs
+    mask_line = cv2.morphologyEx(thr_crop, cv2.MORPH_CLOSE, big_line_kern)
+    cv2.imshow('mask_line', mask_line)
+    cv2.waitKey(0)
+
+    mask_line = cv2.morphologyEx(mask_line, cv2.MORPH_OPEN, line_kern)
+    cv2.imshow('mask_line', mask_line)
+    cv2.waitKey(0)
     
     # Med dilation to get the component shapes back up to size
-    mask = cv2.dilate(mask3, line_kern, iterations=int(2**(12/line_width)+4))
-    cv2.imshow('mask', mask)
+    mask_line = cv2.dilate(mask_line, line_kern, iterations=2)
+    cv2.imshow('mask_line', mask_line)
     # cv2.waitKey(0)
 
     # Get the bounding boxes for all the remaining components
     bboxes = np.array([0,0,0,0])
-    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    contours, _ = cv2.findContours(mask_line, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
         x,y,w,h = cv2.boundingRect(contour)
+        # Shift it back to account for the padding
         x = x-20
         y = y-20
 
