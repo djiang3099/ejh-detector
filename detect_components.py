@@ -76,6 +76,60 @@ def get_mask(img):
 
     return closing
 
+def extract_circuit(img, mask, crop_margin=0.1):
+    # Identify ROI for circuit and crop it out, TODO: Use 4sided polygon
+    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    best_contour = None
+    for contour in contours: 
+        if best_contour is None:
+            best_contour = contour
+        elif cv2.contourArea(contour) > cv2.contourArea(best_contour):
+            best_contour = contour
+
+    # cv2.imshow('canny_dil', canny_dil)
+    # print('Press any key to continue...')
+    # cv2.waitKey(0)
+
+    # Get the min enclosing rectangle, should contain the full circuit
+    rect = cv2.minAreaRect(best_contour)
+    box = np.int0(cv2.boxPoints(rect))  # Box points are clockwise starting from the lowest one
+    big_box = enlarge_rotated_rect(box, crop_margin)
+    # cv2.drawContours(markup, [big_box], 0, (0,0,255), 2)
+
+    # Extract this ROI and straighten it
+    roi_width = int((1+crop_margin)*rect[1][0])
+    roi_height = int((1+crop_margin)*rect[1][1])
+    cropped = crop_n_rotate(img, big_box, (roi_width, roi_height))
+    return cropped
+
+def reject_outliers(mask):
+    valid_mask = np.zeros(mask.shape[:2], dtype="uint8")
+    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    areas = np.array([])
+    for contour in contours: 
+        x,y,w,h = cv2.boundingRect(contour)
+        areas = np.append(areas, w*h)
+
+    # Get rid of random noise contours
+    idx = np.where(areas > 300)[0]
+    filt_areas = areas[idx]
+
+    # Set a threshold based off mean contour size
+    if np.average(filt_areas) / np.std(filt_areas) > 1.5:
+        # There are few outliers, reject two std dev away from avg
+        idx = np.where(areas > np.average(filt_areas)-np.std(filt_areas))[0]
+    else: 
+        # Mean is similar to std dev, meaning significant number of outliers
+        idx = np.where(areas > np.average(filt_areas)-np.std(filt_areas)*0.5)[0]
+    filt_cnt = np.array(contours)[idx]
+
+    for contour in filt_cnt:
+        x,y,w,h = cv2.boundingRect(contour)
+        cv2.rectangle(valid_mask, (x,y), (x+w, y+h), 255, -1)
+
+    return cv2.bitwise_and(valid_mask, mask)
+
+
 def detect_components(img):
     # Resize the image to fit on the screen
     height, width = img.shape[:2]
@@ -103,32 +157,11 @@ def detect_components(img):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
     canny_dil = cv2.dilate(canny, kernel)   # Dilate to join them up 
 
-    # Identify ROI for circuit and crop it out, TODO: Use 4sided polygon
-    contours, _ = cv2.findContours(canny_dil, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    best_contour = None
-    for contour in contours: 
-        if best_contour is None:
-            best_contour = contour
-        elif cv2.contourArea(contour) > cv2.contourArea(best_contour):
-            best_contour = contour
-
-    # cv2.imshow('canny_dil', canny_dil)
-    # print('Press any key to continue...')
-    # cv2.waitKey(0)
-
-    # Get the min enclosing rectangle, should contain the full circuit
-    rect = cv2.minAreaRect(best_contour)
-    box = np.int0(cv2.boxPoints(rect))  # Box points are clockwise starting from the lowest one
-    crop_margin = 0.1
-    big_box = enlarge_rotated_rect(box, crop_margin)
-    cv2.drawContours(markup, [big_box], 0, (0,0,255), 2)
-
-    # Extract this ROI and straighten it
-    roi_width = int((1+crop_margin)*rect[1][0])
-    roi_height = int((1+crop_margin)*rect[1][1])
-    cropped = crop_n_rotate(img_pad, big_box, (roi_width, roi_height))
+    # Crop the circuit out of the image and rotate to straighten
+    cropped = extract_circuit(img_pad, canny_dil, crop_margin=0.1)
 
     # Rescale the cropped image to normalise
+    roi_height, roi_width = cropped.shape[:2]
     if roi_height > roi_width:
         scale = roi_width/lim_dim
     else:
@@ -155,12 +188,14 @@ def detect_components(img):
     # cv2.imshow('mask', mask)
     # cv2.waitKey(0)
 
-    # Med erosion to get rid of lines
+    # Erosion to get rid of lines
     init_cont = len(cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2])
     max_cont = init_cont
     peaked = False
     found = False
     conts = []
+    # Slowly erode the lines with increasing kernel size to determine linewidth, when 
+    # components begin forming separate contours
     for i in range(3,25):
         mid_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (i,i))
         mask2 = cv2.erode(mask, mid_kern, iterations=1)
@@ -199,6 +234,9 @@ def detect_components(img):
     cv2.imshow('mask_line', mask_line)
     cv2.waitKey(0)
     
+    # Remove outlier blobs generated from line intersections
+    mask_line = reject_outliers(mask_line)
+
     # Med dilation to get the component shapes back up to size
     mask_line = cv2.dilate(mask_line, line_kern, iterations=2)
     cv2.imshow('mask_line', mask_line)
