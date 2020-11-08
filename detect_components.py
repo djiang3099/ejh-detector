@@ -51,28 +51,17 @@ def get_mask(img):
     # Adaptive thresholding to binarise the image
     th3 = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
                 cv2.THRESH_BINARY_INV, 11, 2)
-    # cv2.imshow('thr', th3)            
-    # th3 = cv2.bitwise_not(th3)
     
     th3 = cv2.copyMakeBorder(th3, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[0,0,0])
     
-
     # Closing operation to fill holes
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
-    closing = cv2.morphologyEx(th3, cv2.MORPH_CLOSE, kernel, iterations=2)      ##### TODO: Maybe iterations needs to be tuned
-    # closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
-    # closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
+    closing = cv2.morphologyEx(th3, cv2.MORPH_CLOSE, kernel, iterations=2)
 
     closing = cv2.erode(closing, kernel, iterations=1)
     cv2.imshow('thr', closing)
     # Erosion to get rid of noise
-    tic = time.perf_counter()
-    # for i in range(1,10):
     closing = remove_noise(closing)
-    toc = time.perf_counter()
-    print(f"remove noise {toc - tic:0.4f} seconds")
-    # cv2.imshow('noise', closing)
-    # cv2.waitKey(0)
 
     return closing
 
@@ -86,15 +75,10 @@ def extract_circuit(img, mask, crop_margin=0.1):
         elif cv2.contourArea(contour) > cv2.contourArea(best_contour):
             best_contour = contour
 
-    # cv2.imshow('canny_dil', canny_dil)
-    # print('Press any key to continue...')
-    # cv2.waitKey(0)
-
     # Get the min enclosing rectangle, should contain the full circuit
     rect = cv2.minAreaRect(best_contour)
     box = np.int0(cv2.boxPoints(rect))  # Box points are clockwise starting from the lowest one
     big_box = enlarge_rotated_rect(box, crop_margin)
-    # cv2.drawContours(markup, [big_box], 0, (0,0,255), 2)
 
     # Extract this ROI and straighten it
     roi_width = int((1+crop_margin)*rect[1][0])
@@ -115,12 +99,13 @@ def reject_outliers(mask):
     filt_areas = areas[idx]
 
     # Set a threshold based off mean contour size
-    if np.average(filt_areas) / np.std(filt_areas) > 1.5:
+    if np.average(filt_areas) / np.std(filt_areas) > 1.3:
         # There are few outliers, reject two std dev away from avg
         idx = np.where(areas > np.average(filt_areas)-np.std(filt_areas))[0]
     else: 
         # Mean is similar to std dev, meaning significant number of outliers
         idx = np.where(areas > np.average(filt_areas)-np.std(filt_areas)*0.5)[0]
+    # Keep the contours specified by idx
     filt_cnt = np.array(contours)[idx]
 
     for contour in filt_cnt:
@@ -129,6 +114,39 @@ def reject_outliers(mask):
 
     return cv2.bitwise_and(valid_mask, mask)
 
+def fill_small_contours(mask):
+    valid_mask = np.zeros(mask.shape[:2], dtype="uint8")
+    contours, hierarchies = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    areas = np.array([])
+    filt_cnt = []
+    for contour, hier in zip(contours, hierarchies[0]):  
+        # Only consider contours of the lowest hierarchy
+        if hier[-2] == -1:
+            filt_cnt.append(contour)
+            areas = np.append(areas, cv2.contourArea(contour))
+
+    # Set a threshold based off mean contour size
+    if np.average(areas) / np.std(areas) < 2:
+        # Mean is comparable to std dev, threshold out things half a std dev away from mean
+        idx = np.where(areas < np.average(areas)-np.std(areas)*0.5)[0]
+        filt_cnt = np.array(filt_cnt)[idx]
+        cv2.drawContours(valid_mask, filt_cnt, -1, 255, -1)
+    # Otherwise do nothing
+
+    return cv2.bitwise_or(valid_mask, mask)
+
+def view_contours(mask):
+    img = np.zeros(mask.shape[:2], dtype="uint8")
+    contours, hiers = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    print('Hierarchy array:')
+    print(hiers)
+    for contour, hier in zip(contours, hiers[0]): 
+        x,y,w,h = cv2.boundingRect(contour)
+        temp = img.copy()
+        cv2.drawContours(temp, [contour], -1, 255, 1)
+        cv2.putText(temp, str(hier), (5,25), cv2.FONT_HERSHEY_COMPLEX, 1, 255)
+        cv2.imshow('contour', temp)
+        cv2.waitKey(0)
 
 def detect_components(img):
     # Resize the image to fit on the screen
@@ -149,8 +167,6 @@ def detect_components(img):
     # Preprocess the image to extract components
     # TODO: Handle images where only part of the page is captured and there's not uniform background
     closing = get_mask(gray)
-    # cv2.imshow('closing', closing)
-    # cv2.waitKey(0)
     
     # Canny edge detection 
     canny = cv2.Canny(closing, 100, 200)
@@ -176,17 +192,14 @@ def detect_components(img):
     thr_crop = get_mask(gray_crop)
     cv2.imshow('thr cropped', thr_crop)
 
-    # Get the relative scale of the circuit components
-    canny_crop = cv2.Canny(thr_crop, 100, 200)
-    scale = cv2.countNonZero(canny_crop) / cv2.countNonZero(thr_crop)
-    print(scale)
-
     big_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (35,35))
 
     # Closing operation to turn components into blobs
     mask = cv2.morphologyEx(thr_crop, cv2.MORPH_CLOSE, big_kern)
     # cv2.imshow('mask', mask)
-    # cv2.waitKey(0)
+    # cv2.waitKey(0) 
+    # view_contours(mask)
+    mask = fill_small_contours(mask)
 
     # Erosion to get rid of lines
     init_cont = len(cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2])
@@ -200,7 +213,7 @@ def detect_components(img):
         mid_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (i,i))
         mask2 = cv2.erode(mask, mid_kern, iterations=1)
         contours, _ = cv2.findContours(mask2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-        print(len(contours))
+        # print(len(contours))
         conts.append(len(contours))
         if max_cont < len(contours): 
             if len(contours) - max_cont > 2:
@@ -222,11 +235,15 @@ def detect_components(img):
         line_width = i*2
 
     # Do it all over again, moderated by the linewidth
-    big_line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3*line_width,3*line_width))
+    big_line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20+2*line_width,20+2*line_width))
     line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (line_width,line_width))
 
     # Closing operation to turn components into blobs
     mask_line = cv2.morphologyEx(thr_crop, cv2.MORPH_CLOSE, big_line_kern)
+    # cv2.imshow('mask_line', mask_line)
+    # cv2.waitKey(0)
+
+    mask_line = fill_small_contours(mask_line)
     cv2.imshow('mask_line', mask_line)
     cv2.waitKey(0)
 
@@ -238,9 +255,9 @@ def detect_components(img):
     mask_line = reject_outliers(mask_line)
 
     # Med dilation to get the component shapes back up to size
-    mask_line = cv2.dilate(mask_line, line_kern, iterations=2)
+    mask_line = cv2.dilate(mask_line, line_kern, iterations=1)
     cv2.imshow('mask_line', mask_line)
-    # cv2.waitKey(0)
+    cv2.waitKey(0)
 
     # Get the bounding boxes for all the remaining components
     bboxes = np.array([0,0,0,0])
@@ -260,7 +277,6 @@ def detect_components(img):
             # Store the bbox
             bboxes = np.vstack( (bboxes, np.array([x,y,w,h])) )
 
-    # cv2.imshow('image', cv2.hconcat([gray, canny, closing, mask]))
     cv2.imshow('cropped', cropped)
     print('Press any key to continue...')
     cv2.waitKey(0)
