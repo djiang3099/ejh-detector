@@ -1,3 +1,10 @@
+# AMME4710 - EJH Detector 2020
+# Circuit Digitaliser 
+
+# 470205127
+# 470355499
+# 470425954
+
 import cv2
 import numpy as np
 

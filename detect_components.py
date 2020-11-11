@@ -1,3 +1,10 @@
+# AMME4710 - EJH Detector 2020
+# Circuit Digitaliser 
+
+# 470205127
+# 470355499
+# 470425954
+
 import cv2
 import numpy as np
 import time
@@ -122,35 +129,36 @@ def detect_components(img):
     cv2.imshow('mask_line', mask_line)
     # cv2.waitKey(0)
 
-    mask_line = cv2.morphologyEx(mask_line, cv2.MORPH_OPEN, line_kern)
-    cv2.imshow('mask_line', mask_line)
+    # Get rid of the lines
+    mask_no_line = cv2.morphologyEx(mask_line, cv2.MORPH_OPEN, line_kern)
+    cv2.imshow('mask_line', mask_no_line)
     # cv2.waitKey(0)
 
     small_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
-    mask_line = cv2.morphologyEx(mask_line, cv2.MORPH_CLOSE, small_kern)
+    mask_no_line = cv2.morphologyEx(mask_no_line, cv2.MORPH_CLOSE, small_kern)
     
     # # Remove outlier blobs generated from line intersections
-    # mask_line = reject_outliers(mask_line)
+    # mask_no_line = reject_outliers(mask_no_line)
 
     # # Med dilation to get the component shapes back up to size
-    # mask_line = cv2.dilate(mask_line, line_kern, iterations=1)
-    # cv2.imshow('mask_line', mask_line)
+    # mask_no_line = cv2.dilate(mask_no_line, line_kern, iterations=1)
+    # cv2.imshow('mask_no_line', mask_no_line)
     # cv2.waitKey(0)
 
     # Get the bounding boxes for all the remaining components
     bboxes = np.array([0,0,0,0])
-    contours, _ = cv2.findContours(mask_line, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    contours, _ = cv2.findContours(mask_no_line, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
         x,y,w,h = cv2.boundingRect(contour)
         # Iterate here to potentially break down the contour into small ones
-        sub_boxes = decompose_contour(mask_line, [x,y,w,h], line_width)
+        sub_boxes = decompose_contour(mask_no_line, [x,y,w,h], line_width)
 
         # Shift it back to account for the padding
         # x = x-pad
         # y = y-pad
 
         # Reject bboxes based on aspect ratio
-        if 4 > w/h > 0.25:
+        if 4 > w/h > 0.25:  
             # Blow up the contour a bit to make sure all components are fully captured
             cv2.rectangle(markup, (int(x-0.1*w), int(y-0.1*h)), (int(x+1.1*w), int(y+1.1*h)), (0,255,0), 2)
             cv2.putText(markup, str(cv2.contourArea(contour)), (x,y+h), cv2.FONT_HERSHEY_COMPLEX, 1, (0,70,255))
@@ -161,15 +169,17 @@ def detect_components(img):
     cv2.imshow('cropped', markup)
     print('Press any key to continue...')
     cv2.waitKey(0)
-    return bboxes[1:]
+    cv2.destroyAllWindows()
+    return bboxes[1:], mask_line
 
 if __name__ == '__main__':
     # Import images 
-    for i in range(11,16):
+    for i in range(1,2):
         path = './Data/Circuits/' + str(i) + '.jpg'
         print(i)
         img = cv2.imread(path)
         bboxes = detect_components(img)
+    print(bboxes)
     # names = ['5','10','15','15manny','20','25','35','40','40many','60','70','70_2','80','80_2','80_3','90','90_2']
     # for i in range(1, len(names)):
     #     path = './scale/' + names[i] + '.jpg'

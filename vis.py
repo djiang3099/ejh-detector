@@ -1,3 +1,10 @@
+# AMME4710 - EJH Detector 2020
+# Circuit Digitaliser 
+
+# 470205127
+# 470355499
+# 470425954
+
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
@@ -43,7 +50,8 @@ def circuit_plot(compNames,adj):
 
     #How to spread out the graph
     pos=nx.planar_layout(G)
-    nx.draw(G,pos,with_labels=True,node_color='#ffffff')
+    #nx.draw(G,pos,with_labels=True,node_color='#ffffff')
+    nx.draw(G,pos,with_labels=True)
 
     labels = nx.get_edge_attributes(G,'label')
     nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
@@ -51,6 +59,7 @@ def circuit_plot(compNames,adj):
 
     img=[]
     #ADAPTED FROM https://gist.github.com/shobhit/3236373
+    '''
     ax=plt.gca()
     fig=plt.gcf()
     trans = ax.transData.transform
@@ -63,5 +72,5 @@ def circuit_plot(compNames,adj):
         a = plt.axes([xa-imsize/2.0,ya-imsize/2.0, imsize, imsize ])
         a.imshow(mpimg.imread("comp/"+n[0]+".png"))
         a.set_aspect('equal')
-        a.axis('off')
+        a.axis('off')'''
     plt.show()
