@@ -67,8 +67,8 @@ class DirectionIdentification(object):
         horizontal = cv2.dilate(horizontal, horizontalStructure)
         
         # Show extracted horizontal lines
-        cv2.imshow("horizontal", horizontal)
-        cv2.waitKey(0)
+        # cv2.imshow("horizontal", horizontal)
+        # cv2.waitKey(0)
 
         # Find the contours
         contours, _ = cv2.findContours(horizontal, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
@@ -122,8 +122,8 @@ class DirectionIdentification(object):
         vertical = cv2.dilate(vertical, verticalStructure)
         
         # Show extracted vertical lines
-        cv2.imshow("vertical", vertical)
-        cv2.waitKey(0)
+        # cv2.imshow("vertical", vertical)
+        # cv2.waitKey(0)
 
         # Find the contours
         contours, _ = cv2.findContours(vertical, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
@@ -163,13 +163,13 @@ class DirectionIdentification(object):
         # Combine both the horizontal and vertical binary images to find the 
         # plus sign on the circuit component
         and_result = cv2.bitwise_and(horizontal,vertical)
-        cv2.imshow("together", and_result)
-        cv2.waitKey(0)
+        # cv2.imshow("together", and_result)
+        # cv2.waitKey(0)
 
         # Get the middle of the image
         middle_results = and_result[self._height_div_4:3*self._height_div_4,self._width_div_4:3*self._width_div_4]
-        cv2.imshow("mid_Res", middle_results)
-        cv2.waitKey(0)
+        # cv2.imshow("mid_Res", middle_results)
+        # cv2.waitKey(0)
 
         # Calculate moments of middle image
         M_mid = cv2.moments(middle_results)

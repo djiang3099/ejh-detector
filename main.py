@@ -10,8 +10,10 @@ import cv2
 
 from detect_components import *
 from circuitDecode import *
+from main_object_detector import *
 
 if __name__ == '__main__':
+    print('Running main')
     # Import images 
     for i in range(3,7):
         path = './Data/Circuits/' + str(i) + '.jpg'
@@ -31,7 +33,9 @@ if __name__ == '__main__':
             # Pass to CNN to classify/confirm components, classified bboxes
             #### SYLVIE GOES BRRRRRRR
             comp_img = img[x:x+w, y:y+w]
-            components.append(ComponentClass('r',0,(x,y),(x+w,y+h),mask))
+            [element,rot_idx] = component_detector(comp_img)
+            components.append(ComponentClass(element,rot_idx,(x,y),(x+w,y+h),mask))
+            # components.append(ComponentClass('r', 0,(x,y),(x+w,y+h),mask))
         '''# creating list        
         components = []  
         

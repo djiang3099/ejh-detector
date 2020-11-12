@@ -5,7 +5,7 @@
 # 470355499
 # 470425954
 
-from cv2 import cv2
+import cv2
 import numpy as np
 from vis import circuit_plot
 

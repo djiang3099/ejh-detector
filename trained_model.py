@@ -1,7 +1,7 @@
 
 # Import necessary packages
 import numpy as np
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 import cv2 
 
 # This class retrieves a trained model and predicts a given component.
