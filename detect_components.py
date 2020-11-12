@@ -49,7 +49,8 @@ def detect_components(img):
     
     markup = extract_circuit(img_pad, canny_dil, crop_margin=0.1)
     markup = cv2.copyMakeBorder(markup, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
-    
+    cropped_img = markup.copy()
+
     # Rescale the cropped image to normalise
     roi_height, roi_width = cropped.shape[:2]
     if roi_height > roi_width:
@@ -170,7 +171,7 @@ def detect_components(img):
     print('Press any key to continue...')
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    return bboxes[1:], mask_line
+    return bboxes[1:], cropped_img, mask_line
 
 if __name__ == '__main__':
     # Import images 
