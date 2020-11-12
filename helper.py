@@ -116,12 +116,14 @@ def reject_outliers(mask):
 
     # Set a threshold based off mean contour size
     try:
-        if np.average(filt_areas) / np.std(filt_areas) > 1.3:
+        if np.average(filt_areas) / np.std(filt_areas) > 2:
+            print('Similarly sized contours', np.average(filt_areas) / np.std(filt_areas))
             # There are few outliers, reject two std dev away from avg
-            idx = np.where(areas > np.average(filt_areas)-np.std(filt_areas))[0]
+            idx = np.where(areas > 0.5*np.average(filt_areas))[0]
         else: 
+            print('Significant outliers', np.average(filt_areas) / np.std(filt_areas))
             # Mean is similar to std dev, meaning significant number of outliers
-            idx = np.where(areas > np.average(filt_areas)-np.std(filt_areas)*0.5)[0]
+            idx = np.where(areas > 0.25*np.average(filt_areas))[0]
     except: 
         print('No contours found for this mask')
         return mask
