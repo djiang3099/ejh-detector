@@ -19,7 +19,7 @@ if __name__ == '__main__':
         img = cv2.imread(path)
 
         # Find the locations of components in the image as Bboxes
-        bboxes, mask = detect_components(img)
+        bboxes, img, mask = detect_components(img)
         cv2.imshow('Main Mask', mask)
         # print('Press any key to continue...')
         cv2.waitKey(0)
@@ -30,7 +30,7 @@ if __name__ == '__main__':
         for x,y,w,h in bboxes:
             # Pass to CNN to classify/confirm components, classified bboxes
             #### SYLVIE GOES BRRRRRRR
-            comp_img = mask[x:x+w, y:y+w]
+            comp_img = img[x:x+w, y:y+w]
             components.append(ComponentClass('r',0,(x,y),(x+w,y+h),mask))
         '''# creating list        
         components = []  
