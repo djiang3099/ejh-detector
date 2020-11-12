@@ -49,7 +49,7 @@ def detect_components(img):
     
     markup = extract_circuit(img_pad, canny_dil, crop_margin=0.1)
     markup = cv2.copyMakeBorder(markup, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
-    cropped_img = markup.copy()
+    
 
     # Rescale the cropped image to normalise
     roi_height, roi_width = cropped.shape[:2]
@@ -60,6 +60,7 @@ def detect_components(img):
 
     cropped = cv2.resize(cropped, ( int(roi_width/scale), int(roi_height/scale) ), interpolation = cv2.INTER_CUBIC)
     markup = cv2.resize(markup, ( int(roi_width/scale), int(roi_height/scale) ), interpolation = cv2.INTER_CUBIC)
+    cropped_img = markup.copy()
     cv2.imshow('bin cropped', cropped)
     # cv2.waitKey(0)
     
@@ -139,7 +140,7 @@ def detect_components(img):
     mask_no_line = cv2.morphologyEx(mask_no_line, cv2.MORPH_CLOSE, small_kern)
     
     # # Remove outlier blobs generated from line intersections
-    # mask_no_line = reject_outliers(mask_no_line)
+    mask_no_line = remove_noise(mask_no_line)
 
     # # Med dilation to get the component shapes back up to size
     # mask_no_line = cv2.dilate(mask_no_line, line_kern, iterations=1)

@@ -73,4 +73,6 @@ def circuit_plot(compNames,adj):
         a.imshow(mpimg.imread("comp/"+n[0]+".png"))
         a.set_aspect('equal')
         a.axis('off')'''
+    print(compNames)
+    print(adj)
     plt.show()
