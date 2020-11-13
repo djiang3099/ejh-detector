@@ -134,8 +134,6 @@ def reject_outliers(mask):
         x,y,w,h = cv2.boundingRect(contour)
         cv2.rectangle(valid_mask, (x,y), (x+w, y+h), 255, -1)
 
-    return cv2.bitwise_and(valid_mask, mask)w, y+h), 255, -1)
-
     return cv2.bitwise_and(valid_mask, mask)
 
 def fill_small_contours(mask):
@@ -163,8 +161,11 @@ def fill_small_contours(mask):
 
     return cv2.bitwise_or(valid_mask, mask)
 
+# Function that takes in a mask with ROI and linewidth and does a second pass to identify 
+# smaller contours/components within. 
 def decompose_contour(mask, og_rect, line_width):
     rects = [og_rect]
+
     return rects
 
 def view_contours(mask):
