@@ -13,7 +13,7 @@ class TrainedModel(object):
         self._tensor_size = (1,28,28,1)
 
         # Load model from file 
-        self._loaded_model = load_model('./90_accuracy.h5')
+        self._loaded_model = load_model('./back_to_og.h5')
 
         # List of component names: diodes, resistor, inductor,capacitor,ground, voltage
         self._class_names = np.array( ['d','r','i','c','g','v'])
@@ -29,11 +29,28 @@ class TrainedModel(object):
     def predict_image(self,img):
        
         # Resize the given image to (28,28) for the model 
-        _img_resize = cv2.resize(img, self._image_size )
+        # _img_resize = cv2.resize(img, self._image_size )
 
         # cv2.imshow("img",_img_resize)
         # cv2.waitKey(0)
 
+        #Getting the bigger side of the image
+        s = max(img.shape[0:2])
+
+        #Creating a dark square with NUMPY  
+        f = np.ones((s,s),np.uint8)*255
+        #Getting the centering position 
+        ax,ay = (s - img.shape[1])//2,(s - img.shape[0])//2
+        
+        #Pasting the 'image' in a centering position
+        f[ay:img.shape[0]+ay,ax:ax+img.shape[1]] = img
+        
+        #Showing results (just in case) 
+        cv2.imshow("IMG",f)
+        #A pause, waiting for any press in keyboard
+        cv2.waitKey(0)
+
+        _img_resize = cv2.resize(f, self._image_size )
         # Convert into a tensor for the model
         self._img_to_predict = np.reshape(_img_resize,self._tensor_size )
 

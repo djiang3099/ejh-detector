@@ -134,7 +134,7 @@ def reject_outliers(mask):
         x,y,w,h = cv2.boundingRect(contour)
         cv2.rectangle(valid_mask, (x,y), (x+w, y+h), 255, -1)
 
-    return cv2.bitwise_and(valid_mask, mask)w, y+h), 255, -1)
+    # return cv2.bitwise_and(valid_mask, mask)w, y+h), 255, -1)
 
     return cv2.bitwise_and(valid_mask, mask)
 
