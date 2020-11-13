@@ -28,10 +28,15 @@ class ComponentClass:
        # cv2.imshow("circuit",source_mask)
         #cv2.waitKey(0)
         self.__generate_pin_boxes()
-       # cv2.imshow("positive",self.pin_rectangles[0])
-        #cv2.waitKey(0)
-       # cv2.imshow("negative",self.pin_rectangles[1])
-        #cv2.waitKey(0)
+        print("Direction is "+str(rot))
+        if rot==None:
+              raise Exception("No rotation") 
+        print(point1)
+        print(point2)
+        cv2.imshow("positive",self.pin_rectangles[0])
+        cv2.waitKey(0)
+        cv2.imshow("negative",self.pin_rectangles[1])
+        cv2.waitKey(0)
 
     def __generate_pin_boxes(self): 
         #Positive Bottom
@@ -73,7 +78,7 @@ class ComponentClass:
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(top1.astype(int)),tuple(top2.astype(int)), 255, -1) 
 
-        elif(self.rot==4):
+        elif(self.rot==3):
             midPointx=(self.__point2[0]+self.__point1[0])/2
             left1=self.__point1
             left2=np.asarray([midPointx,self.__point2[1]])
@@ -191,9 +196,18 @@ def circuit_decode(mask,components):
                 #might just have an array, each row is the cocmponent and each col is the line
                 #or vise versa
         print(adj_matrix)
-        if len(np.where(adj_matrix[-1]>0)[0]) < 2:
-            #adj_matrix[-1]=[]
-            adj_matrix=np.delete(adj_matrix,-1,0)
+
+        #Check if empty then test to remove rows
+        
+        if not(adj_matrix.size==0):
+            found_connect_idx=np.where(adj_matrix[-1]>0)[0]
+
+            #All lines should have 2 connections
+            if len(found_connect_idx) < 2:
+                #adj_matrix[-1]=[]
+                #if (components_type_export[found_connect_idx[0]] =='g')
+
+                adj_matrix=np.delete(adj_matrix,-1,0)
             
 
 

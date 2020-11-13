@@ -38,11 +38,13 @@ class DirectionIdentification(object):
         else:
             print('----------- Horizontal inductor/resistor -----------')
             self._rot_idx = 1
+
         return self._rot_idx
 
     # Find the direction of the inductor the same way a resistor is found
     def find_inductor_direction(self):
-        self.find_resistor_direction()
+        self._rot_idx = self.find_resistor_direction()
+        return self._rot_idx
 
     # Find the horizontal lines at the end of the image which would correspond
     # to the endpoints of a component
