@@ -59,7 +59,7 @@ class DirectionIdentification(object):
 
         # Specify size on horizontal axis
         cols = horizontal.shape[1]
-        horizontal_size = cols // 10
+        horizontal_size = cols // 8
 
         # Create structure element for extracting horizontal lines through morphology operations
         horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
@@ -114,7 +114,7 @@ class DirectionIdentification(object):
 
         # Specify size on vertical axis
         rows = vertical.shape[0]
-        verticalsize = rows // 10
+        verticalsize = rows // 8
 
         # Create structure element for extracting vertical lines through morphology operations
         verticalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, verticalsize))

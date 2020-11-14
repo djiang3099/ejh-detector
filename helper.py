@@ -136,6 +136,7 @@ def reject_outliers(mask):
 
     return cv2.bitwise_and(valid_mask, mask), filt_cnt
 
+
 def reject_area_outliers(bboxes):
     areas = np.array([])
     for _,_,w,h in bboxes: 
