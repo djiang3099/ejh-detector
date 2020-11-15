@@ -202,8 +202,8 @@ def decompose_contour(mask, og_rect, line_width):
     pad = 4*line_width
     mask2 = mask.copy()
     # 
-    kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (line_width, line_width))
-    kernel2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (line_width*2, line_width*2))
+    kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(line_width/1.5), int(line_width/1.5)))
+    kernel2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(line_width*1.5), int(line_width*1.5)))
     # ymin, ymax, xmin, xmax
     mask_coords = [int(y0-0.15*h0), int(y0+1.15*h0), int(x0-0.15*w0), int(x0+1.15*w0)]
     roi = mask[int(y0-0.15*h0):int(y0+1.15*h0), int(x0-0.15*w0):int(x0+1.15*w0)]
@@ -213,33 +213,33 @@ def decompose_contour(mask, og_rect, line_width):
     roi_fill = roi_close.copy()
     if len(contours) > 1:
         # Likely multiple components in this ROI. Fill in these holes
-        areas = np.array([])
-        for contour in contours: 
-            areas = np.append(areas, cv2.contourArea(contour))
-        print('Multiple contours detected', areas, w0*h0/2, len(np.where(areas > 300)[0]))
-        if len(np.where(areas > 300)[0]) == 2:
-            for contour in contours:
-                if cv2.contourArea(contour) < w0*h0/1.5:
-                    print("FILLING")
-                    cv2.drawContours(roi_fill, [contour], -1, 255, -1)
-        elif len(np.where(areas > 300)[0]) > 2:
-            for contour in contours:
-                if cv2.contourArea(contour) < w0*h0/6:
-                    print("FILLING")
-                    cv2.drawContours(roi_fill, [contour], -1, 255, -1)
+        # areas = np.array([])
+        # for contour in contours: 
+        #     areas = np.append(areas, cv2.contourArea(contour))
+        # print('Multiple contours detected', areas, w0*h0/2, len(np.where(areas > 300)[0]))
+        # if len(np.where(areas > 300)[0]) == 2:
+        for contour in contours:
+            if cv2.contourArea(contour) < w0*h0/1.5:
+                # print("FILLING")
+                cv2.drawContours(roi_fill, [contour], -1, 255, -1)
+        # elif len(np.where(areas > 300)[0]) > 2:
+        #     for contour in contours:
+        #         if cv2.contourArea(contour) < w0*h0/6:
+        #             print("FILLING")
+        #             cv2.drawContours(roi_fill, [contour], -1, 255, -1)
    
     roi_open = cv2.morphologyEx(roi_fill, cv2.MORPH_OPEN, kernel1)
     
 
     contours, _ = cv2.findContours(roi_open, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    print('AFTER >>> Num contours:', len(contours))
+    # print('AFTER >>> Num contours:', len(contours))
     for contour in contours:
         x,y,w,h = cv2.boundingRect(contour)
         rects = np.vstack( (rects, np.array([mask_coords[2]+int(x)-pad, mask_coords[0]+int(y)-pad, w, h])) )
-    #     cv2.rectangle(roi, (int(x), int(y)), (int(x+w), int(y+h)), 255, 2)
-    #     cv2.rectangle(mask2, (mask_coords[2]+int(x)-pad,mask_coords[0]+int(y)-pad), \
-    #         (mask_coords[2]+int(x+w)-pad,mask_coords[0]+int(y+h)-pad), 255, 2)
-    #     cv2.rectangle(mask2, (mask_coords[2],mask_coords[0]), (mask_coords[3], mask_coords[1]), 255, 2)
+        cv2.rectangle(roi, (int(x), int(y)), (int(x+w), int(y+h)), 255, 2)
+        cv2.rectangle(mask2, (mask_coords[2]+int(x)-pad,mask_coords[0]+int(y)-pad), \
+            (mask_coords[2]+int(x+w)-pad,mask_coords[0]+int(y+h)-pad), 255, 2)
+        cv2.rectangle(mask2, (mask_coords[2],mask_coords[0]), (mask_coords[3], mask_coords[1]), 255, 2)
         
     # cv2.imshow('Fill', roi_fill)
     # cv2.imshow('ROI', roi)

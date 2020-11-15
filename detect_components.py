@@ -80,6 +80,8 @@ def detect_components(img):
     # cv2.waitKey(0) 
     # view_contours(mask)
     mask = fill_small_contours(mask)
+    # cv2.imshow('mask', mask)
+    # cv2.waitKey(0) 
 
     # Erosion to get rid of lines
     init_cont = len(cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2])
@@ -104,6 +106,7 @@ def detect_components(img):
             print("Peak found at kernel size", i)
             found = True
             break
+        cv2.putText(mask2, str(i*2), (50,80), cv2.FONT_HERSHEY_COMPLEX, 1, 255)
         # cv2.imshow('mask', mask2)
         # cv2.waitKey(0) 
 
@@ -142,7 +145,7 @@ def detect_components(img):
     bboxes = np.array([0,0,0,0])
     contours, _ = cv2.findContours(mask_no_line, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
-        print(bboxes.shape)
+        # print(bboxes.shape)
         x,y,w,h = cv2.boundingRect(contour)
         # Iterate here to potentially break down the contour into small ones
         sub_boxes = decompose_contour(cropped, [x,y,w,h], line_width)
@@ -155,30 +158,6 @@ def detect_components(img):
         cv2.rectangle(markup, (int(x-0.15*w), int(y-0.15*h)), (int(x+1.15*w), int(y+1.15*h)), (0,255,0), 2)
         # cv2.putText(markup, str(cv2.contourArea(contour)), (x,y+h), cv2.FONT_HERSHEY_COMPLEX, 1, (0,70,255))
 
-
-    # # Med dilation to get the component shapes back up to size
-    # mask_no_line = cv2.dilate(mask_no_line, line_kern, iterations=1)
-    # cv2.imshow('mask_no_line', mask_no_line)
-    # cv2.waitKey(0)
-
-
-    # Get the bounding boxes for all the remaining components
-    # bboxes = np.array([0,0,0,0])
-    # contours, _ = cv2.findContours(mask_no_line, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    # for contour in contours:
-    #     # Shift it back to account for the padding
-    #     # x = x-pad
-    #     # y = y-pad
-
-    #     # Reject bboxes based on aspect ratio
-    #     if 4 > w/h > 0.25:  
-    #         # Blow up the contour a bit to make sure all components are fully captured
-    #         cv2.rectangle(markup, (int(x-0.1*w), int(y-0.1*h)), (int(x+1.1*w), int(y+1.1*h)), (0,255,0), 2)
-    #         cv2.putText(markup, str(cv2.contourArea(contour)), (x,y+h), cv2.FONT_HERSHEY_COMPLEX, 1, (0,70,255))
-
-    #         # Store the bbox
-    #         bboxes = np.vstack( (bboxes, np.array([x,y,w,h])) )
-
     cv2.imshow('cropped', markup)
     print('Press any key to continue...')
     cv2.waitKey(0)
@@ -187,12 +166,14 @@ def detect_components(img):
 
 if __name__ == '__main__':
     # Import images 
-    for i in range(38,39):
-        path = './Data/Circuits/' + str(i) + '.jpg'
+    # for i in range(39,43):
+    #     path = './Data/Circuits/' + str(i) + '.jpg'
+    for i in range(0,6):
+        path = './Data/Examples/' + str(i) + '.PNG'
         print(i)
         img = cv2.imread(path) 
         bboxes = detect_components(img)
-    print(bboxes)
+    # print(bboxes)
     # names = ['5','10','15','15manny','20','25','35','40','40many','60','70','70_2','80','80_2','80_3','90','90_2']
     # for i in range(1, len(names)):
     #     path = './scale/' + names[i] + '.jpg'
