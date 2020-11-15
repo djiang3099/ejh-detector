@@ -134,9 +134,40 @@ def reject_outliers(mask):
         x,y,w,h = cv2.boundingRect(contour)
         cv2.rectangle(valid_mask, (x,y), (x+w, y+h), 255, -1)
 
-    # return cv2.bitwise_and(valid_mask, mask)w, y+h), 255, -1)
+    return cv2.bitwise_and(valid_mask, mask), filt_cnt
 
-    return cv2.bitwise_and(valid_mask, mask)
+
+def reject_area_outliers(bboxes):
+    areas = np.array([])
+    for _,_,w,h in bboxes: 
+        areas = np.append(areas, w*h)
+
+    # Get rid of random noise contours
+    idx = np.where(areas > 300)[0]
+    filt_areas = areas[idx]
+
+    # Set a threshold based off mean contour size
+    try:
+        # if np.average(filt_areas) / np.std(filt_areas) > 2:
+        #     print('Similarly sized contours', np.average(filt_areas) / np.std(filt_areas))
+        #     # There are few outliers, reject two std dev away from avg
+        #     idx = np.where(areas > 0.5*np.average(filt_areas))[0]
+        # else: 
+        #     print('Significant outliers', np.average(filt_areas) / np.std(filt_areas))
+        #     # Mean is similar to std dev, meaning significant number of outliers
+        #     idx = np.where(areas > 0.25*np.average(filt_areas))[0]
+        idx = np.where(areas > 0.5*np.average(filt_areas))[0]
+    except: 
+        print('No contours found for this mask')
+        return bboxes
+    # Keep the contours specified by idx
+    filt_bboxes = bboxes[idx]
+
+    # for contour in filt_cnt:
+    #     x,y,w,h = cv2.boundingRect(contour)
+    #     cv2.rectangle(valid_mask, (x,y), (x+w, y+h), 255, -1)
+
+    return filt_bboxes
 
 def fill_small_contours(mask):
     valid_mask = np.zeros(mask.shape[:2], dtype="uint8")
@@ -163,8 +194,59 @@ def fill_small_contours(mask):
 
     return cv2.bitwise_or(valid_mask, mask)
 
+# Function that takes in a mask with ROI and linewidth and does a second pass to identify 
+# smaller contours/components within. 
 def decompose_contour(mask, og_rect, line_width):
-    rects = [og_rect]
+    rects = np.array([0,0,0,0])
+    x0,y0,w0,h0 = og_rect
+    pad = 4*line_width
+    mask2 = mask.copy()
+    # 
+    kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(line_width/1.5), int(line_width/1.5)))
+    kernel2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(line_width*1.5), int(line_width*1.5)))
+    # ymin, ymax, xmin, xmax
+    mask_coords = [int(y0-0.15*h0), int(y0+1.15*h0), int(x0-0.15*w0), int(x0+1.15*w0)]
+    roi = mask[int(y0-0.15*h0):int(y0+1.15*h0), int(x0-0.15*w0):int(x0+1.15*w0)]
+    roi = cv2.copyMakeBorder(roi, pad, pad, pad, pad, cv2.BORDER_CONSTANT, 0)
+    roi_close = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, kernel2)
+    contours, _ = cv2.findContours(roi_close, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    roi_fill = roi_close.copy()
+    if len(contours) > 1:
+        # Likely multiple components in this ROI. Fill in these holes
+        # areas = np.array([])
+        # for contour in contours: 
+        #     areas = np.append(areas, cv2.contourArea(contour))
+        # print('Multiple contours detected', areas, w0*h0/2, len(np.where(areas > 300)[0]))
+        # if len(np.where(areas > 300)[0]) == 2:
+        for contour in contours:
+            if cv2.contourArea(contour) < w0*h0/1.5:
+                # print("FILLING")
+                cv2.drawContours(roi_fill, [contour], -1, 255, -1)
+        # elif len(np.where(areas > 300)[0]) > 2:
+        #     for contour in contours:
+        #         if cv2.contourArea(contour) < w0*h0/6:
+        #             print("FILLING")
+        #             cv2.drawContours(roi_fill, [contour], -1, 255, -1)
+   
+    roi_open = cv2.morphologyEx(roi_fill, cv2.MORPH_OPEN, kernel1)
+    
+
+    contours, _ = cv2.findContours(roi_open, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    # print('AFTER >>> Num contours:', len(contours))
+    for contour in contours:
+        x,y,w,h = cv2.boundingRect(contour)
+        rects = np.vstack( (rects, np.array([mask_coords[2]+int(x)-pad, mask_coords[0]+int(y)-pad, w, h])) )
+        cv2.rectangle(roi, (int(x), int(y)), (int(x+w), int(y+h)), 255, 2)
+        cv2.rectangle(mask2, (mask_coords[2]+int(x)-pad,mask_coords[0]+int(y)-pad), \
+            (mask_coords[2]+int(x+w)-pad,mask_coords[0]+int(y+h)-pad), 255, 2)
+        cv2.rectangle(mask2, (mask_coords[2],mask_coords[0]), (mask_coords[3], mask_coords[1]), 255, 2)
+        
+    # cv2.imshow('Fill', roi_fill)
+    # cv2.imshow('ROI', roi)
+    # cv2.imshow('Closed up', roi_close)
+    # cv2.imshow('Opened up', roi_open)
+    # cv2.waitKey(0)
+
     return rects
 
 def view_contours(mask):
