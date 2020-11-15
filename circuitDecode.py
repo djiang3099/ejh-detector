@@ -33,10 +33,10 @@ class ComponentClass:
               raise Exception("No rotation") 
         print(point1)
         print(point2)
-        cv2.imshow("positive",self.pin_rectangles[0])
-        cv2.waitKey(0)
-        cv2.imshow("negative",self.pin_rectangles[1])
-        cv2.waitKey(0)
+        # cv2.imshow("positive",self.pin_rectangles[0])
+        # cv2.waitKey(0)
+        # cv2.imshow("negative",self.pin_rectangles[1])
+        # cv2.waitKey(0)
 
     def __generate_pin_boxes(self): 
         #Positive Bottom

@@ -1,7 +1,7 @@
 
 # Import necessary packages
 import numpy as np
-from tensorflow.keras.models import load_model
+from keras.models import load_model
 import cv2 
 
 # This class retrieves a trained model and predicts a given component.
@@ -9,11 +9,12 @@ class TrainedModel(object):
     def __init__(self):
 
         # Initialise the image sizes 
-        self._image_size = (28,28)
-        self._tensor_size = (1,28,28,1)
-
+        # self._image_size = (28,28)
+        # self._tensor_size = (1,28,28,1)
+        self._image_size = (56,56)
+        self._tensor_size = (1,56,56,1)
         # Load model from file 
-        self._loaded_model = load_model('./back_to_og.h5')
+        self._loaded_model = load_model('best_one_yet.h5')
 
         # List of component names: diodes, resistor, inductor,capacitor,ground, voltage
         self._class_names = np.array( ['d','r','i','c','g','v'])
@@ -28,11 +29,9 @@ class TrainedModel(object):
     # Predict a single image 
     def predict_image(self,img):
        
+
         # Resize the given image to (28,28) for the model 
         # _img_resize = cv2.resize(img, self._image_size )
-
-        # cv2.imshow("img",_img_resize)
-        # cv2.waitKey(0)
 
         #Getting the bigger side of the image
         s = max(img.shape[0:2])
@@ -46,11 +45,13 @@ class TrainedModel(object):
         f[ay:img.shape[0]+ay,ax:ax+img.shape[1]] = img
         
         #Showing results (just in case) 
+        cv2.imwrite('gifs/squared.jpg', f)
         cv2.imshow("IMG",f)
         #A pause, waiting for any press in keyboard
         cv2.waitKey(0)
 
         _img_resize = cv2.resize(f, self._image_size )
+
         # Convert into a tensor for the model
         self._img_to_predict = np.reshape(_img_resize,self._tensor_size )
 
@@ -65,11 +66,6 @@ class TrainedModel(object):
         
         # Sort this with highest confidence first
         _sorted_results = sorted(_combined_results.items(), key=lambda kv: kv[0],reverse=True)
-
-        # if(_sorted_results[0][0] < 50):
-        #     print('invalid result')
-        #     _sorted_results[0][1] = 'x'
-
 
         return _sorted_results
 
