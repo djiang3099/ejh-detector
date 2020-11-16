@@ -35,7 +35,7 @@ class DirectionIdentification(object):
                  cv2.THRESH_BINARY_INV, 11, 2)
 
 
-        self._img_height,self._img_width = self._img_resize.shape[:2]
+        self._img_width,self._img_height = self._img_resize.shape[:2]
         self._width_div_4 = int(self._img_width/4)
         self._height_div_4 = int(self._img_height/4)
         self._width_div_3 = int(self._img_width/3)
@@ -46,7 +46,7 @@ class DirectionIdentification(object):
     # Find the direction of a resistor by comparing the height and width of 
     # the bounding box    
     def find_resistor_direction(self):
-        if (self._img_height > self._img_width):
+        if (self._img_height < self._img_width):
             print('----------- Vertical inductor/resistor -----------')
             self._rot_idx = 0
         else:
@@ -71,7 +71,7 @@ class DirectionIdentification(object):
 
         # Specify size on horizontal axis
         cols = horizontal.shape[1]
-        horizontal_size = cols // 5 
+        horizontal_size = cols // 7 
 
         # Create structure element for extracting horizontal lines through morphology operations
         horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
@@ -81,9 +81,9 @@ class DirectionIdentification(object):
         horizontal = cv2.dilate(horizontal, horizontalStructure)
         
         # Show extracted horizontal lines
-        cv2.imwrite('gifs/horz.jpg', horizontal)
-        cv2.imshow("horizontal", horizontal)
-        cv2.waitKey(0)
+        # cv2.imwrite('gifs/horz.jpg', horizontal)
+        # cv2.imshow("horizontal", horizontal)
+        # cv2.waitKey(0)
 
         # Find the contours
         contours, _ = cv2.findContours(horizontal, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
@@ -127,7 +127,7 @@ class DirectionIdentification(object):
 
         # Specify size on vertical axis
         rows = vertical.shape[0]
-        verticalsize = rows // 5
+        verticalsize = rows // 7
 
         # Create structure element for extracting vertical lines through morphology operations
         verticalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, verticalsize))
@@ -137,9 +137,9 @@ class DirectionIdentification(object):
         vertical = cv2.dilate(vertical, verticalStructure)
         
         # Show extracted vertical lines
-        cv2.imwrite('gifs/vert.jpg', vertical)
-        cv2.imshow("vertical", vertical)
-        cv2.waitKey(0)
+        # cv2.imwrite('gifs/vert.jpg', vertical)
+        # cv2.imshow("vertical", vertical)
+        # cv2.waitKey(0)
 
         # Find the contours
         contours, _ = cv2.findContours(vertical, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
@@ -179,9 +179,9 @@ class DirectionIdentification(object):
         # Combine both the horizontal and vertical binary images to find the 
         # plus sign on the circuit component
         and_result = cv2.bitwise_and(horizontal,vertical)
-        cv2.imwrite('gifs/and.jpg', and_result)
-        cv2.imshow("together", and_result)
-        cv2.waitKey(0)
+        # cv2.imwrite('gifs/and.jpg', and_result)
+        # cv2.imshow("together", and_result)
+        # cv2.waitKey(0)
 
         # Get the middle of the image
         middle_results = and_result[self._height_div_4:3*self._height_div_4,self._width_div_4:3*self._width_div_4]
@@ -194,10 +194,10 @@ class DirectionIdentification(object):
         
         #Pasting the 'image' in a centering position
         f[ay:middle_results.shape[0]+ay,ax:ax+middle_results.shape[1]] = middle_results
-        cv2.imwrite('gifs/and_middle.jpg', f)
+        # cv2.imwrite('gifs/and_middle.jpg', f)
 
-        cv2.imshow("mid_Res", f)
-        cv2.waitKey(0)
+        # cv2.imshow("mid_Res", f)
+        # cv2.waitKey(0)
 
         # Find contours
         contours, _ = cv2.findContours(middle_results, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
@@ -299,9 +299,9 @@ class DirectionIdentification(object):
             cY_mid = int(M_mid["m01"] / M_mid["m00"]) + self._height_div_3
 
             # cv2.imshow('all',self._bw)
-            cv2.imwrite('gifs/middle.jpg', middle_results)
-            cv2.imshow("mid", middle_results)
-            cv2.waitKey(0)
+            # cv2.imwrite('gifs/middle.jpg', middle_results)
+            # cv2.imshow("mid", middle_results)
+            # cv2.waitKey(0)
 
             # Check if the moments shifted to the top which suggests the diode
             # is pointing up
@@ -334,9 +334,9 @@ class DirectionIdentification(object):
             cY_mid = int(M_mid["m01"] / M_mid["m00"]) + self._height_div_3
 
             # cv2.imshow('all',self._bw)
-            cv2.imwrite('gifs/middle.jpg', middle_results)
-            cv2.imshow("mid", middle_results)
-            cv2.waitKey(0)
+            # cv2.imwrite('gifs/middle.jpg', middle_results)
+            # cv2.imshow("mid", middle_results)
+            # cv2.waitKey(0)
 
             # Check if the moments shift to the left which suggests the diode
             # is pointing left

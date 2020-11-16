@@ -45,7 +45,7 @@ class TrainedModel(object):
         f[ay:img.shape[0]+ay,ax:ax+img.shape[1]] = img
         
         #Showing results (just in case) 
-        cv2.imwrite('gifs/squared.jpg', f)
+        # cv2.imwrite('gifs/squared.jpg', f)
         cv2.imshow("IMG",f)
         #A pause, waiting for any press in keyboard
         cv2.waitKey(0)

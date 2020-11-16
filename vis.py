@@ -10,15 +10,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-if __name__ == '__main__':
+def circuit_plot(compNames,adj):
+# if __name__ == '__main__':
 
     G = nx.Graph()
 
 
-    adj=np.asarray([[2,2,2],
-    [1,1,1]])
+    # adj=np.asarray([[2,2,2],
+    # [1,1,1]])
     #!!print(adj)
-    compNames=np.asarray(['v','d1','r2'])
+    # compNames=np.asarray(['v','d1','r2'])
     lineNames=[]
 
     for line_idx in range(len(adj)):
