@@ -10,15 +10,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-def circuit_plot(compNames,adj):
+if __name__ == '__main__':
 
     G = nx.Graph()
 
 
-    #adj=np.asarray([[2,2,2],
-    #[1,1,1]])
+    adj=np.asarray([[2,2,2],
+    [1,1,1]])
     #!!print(adj)
-    #compNames=np.asarray(['v','r1','r2'])
+    compNames=np.asarray(['v','d1','r2'])
     lineNames=[]
 
     for line_idx in range(len(adj)):
@@ -50,7 +50,8 @@ def circuit_plot(compNames,adj):
 
     #How to spread out the graph
     pos=nx.planar_layout(G)
-    nx.draw(G,pos,with_labels=True,node_color='#ffffff')
+    #nx.draw(G,pos,with_labels=True,node_color='#ffffff')
+    nx.draw(G,pos,node_color='#ffffff')
     #nx.draw(G,pos,with_labels=True)
 
     labels = nx.get_edge_attributes(G,'label')
