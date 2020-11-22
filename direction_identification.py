@@ -1,4 +1,9 @@
-# Find direction of each element
+# AMME4710 - EJH Detector 2020
+# Circuit Digitaliser 
+
+# 470205127
+# 470355499
+# 470425954
 
 # Import required packages
 import cv2 
@@ -7,46 +12,50 @@ import numpy as np
 # This class finds the direction of each detected element, it takes an image as 
 # an input and retuns the rotation of component
 class DirectionIdentification(object):
+    
+    # Initialise class
     def __init__(self):
+
         # Initialise the height, width, image and rotation index
-        self._img_height = []
         self._img_width = []
+        self._img_height = []
         self._img = []
         self._rot_idx = []
         
-
-    # This function reads and preprocesses the image
+    # Read the image and preprocess it
     def preprocess_image(self,img):
-        # Get image, its dimensions and a fourth of the dimensions
+
+        # Get image
         self._img = img
+
+        # Fix the width of the image to 100 and scale the horizontal height to 
+        # maintain aspect ratio
         width = 100
         scale_percent = int(100*width/img.shape[1]) # percent of original size
-        # width = int(img.shape[1] * scale_percent / 100)
         height = int(img.shape[0] * scale_percent / 100)
         dim = (width, height)
-        # resize image
+
+        # Resize image
         self._img_resize = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
 
-        # self._img_resize = cv2.resize(self._img, self._img_size )
         # Blur image to get rid of noise and get a binary image
-        # MAYBE YOU CAN GET A BINARY IMAGE FROM DANIEL
         self._blur = cv2.GaussianBlur(self._img_resize, (3,3), 0)
         self._bw = cv2.adaptiveThreshold(self._blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
                  cv2.THRESH_BINARY_INV, 11, 2)
 
+        # Define the image dimensions
+        self._img_height,self._img_width = self._img_resize.shape[:2]
 
-        self._img_width,self._img_height = self._img_resize.shape[:2]
-        self._width_div_4 = int(self._img_width/4)
+        # Define a third and quarter for later region extraction
         self._height_div_4 = int(self._img_height/4)
-        self._width_div_3 = int(self._img_width/3)
+        self._width_div_4 = int(self._img_width/4)
         self._height_div_3 = int(self._img_height/3)
-
-        
+        self._width_div_3 = int(self._img_width/3)
 
     # Find the direction of a resistor by comparing the height and width of 
     # the bounding box    
     def find_resistor_direction(self):
-        if (self._img_height < self._img_width):
+        if (self._img_width < self._img_height):
             print('----------- Vertical inductor/resistor -----------')
             self._rot_idx = 0
         else:
@@ -58,8 +67,8 @@ class DirectionIdentification(object):
     def find_inductor_direction(self):
         return self.find_resistor_direction()
 
-    # Find the horizontal lines at the end of the image which would correspond
-    # to the endpoints of a component
+    # Find the horizontal lines at the left and right of an image which would 
+    # correspond to the endpoints of a component
     def get_horizontal_contours(self):
 
         # Copy the binary image
@@ -80,11 +89,6 @@ class DirectionIdentification(object):
         horizontal = cv2.erode(horizontal, horizontalStructure)
         horizontal = cv2.dilate(horizontal, horizontalStructure)
         
-        # Show extracted horizontal lines
-        # cv2.imwrite('gifs/horz.jpg', horizontal)
-        # cv2.imshow("horizontal", horizontal)
-        # cv2.waitKey(0)
-
         # Find the contours
         contours, _ = cv2.findContours(horizontal, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
         
@@ -102,20 +106,20 @@ class DirectionIdentification(object):
             cX = int(M["m10"] / M["m00"])
 
             # Check if the center x is towards the left of the image
-            if (cX < self._height_div_4):
+            if (cX < self._width_div_4):
                 print('----------- Horizontal line on the left -----------')
                 horz_left = 1
 
             # Check if the center x is towards the right of the image
-            elif (cX > 3*self._height_div_4):
+            elif (cX > 3*self._width_div_4):
                 print('----------- Horizontal line on the right -----------')
                 horz_right =1
 
         # Return detection 
         return [horizontal, horz_left,horz_right]
 
-    # Find the vertical lines at the end of the image which would correspond
-    # to the endpoints of a component
+    # Find the vertical lines at top and bottom of the image which would 
+    # correspond to the endpoints of a component
     def get_vertical_contours(self):
         
         # Copy the binary image
@@ -136,11 +140,6 @@ class DirectionIdentification(object):
         vertical = cv2.erode(vertical, verticalStructure)
         vertical = cv2.dilate(vertical, verticalStructure)
         
-        # Show extracted vertical lines
-        # cv2.imwrite('gifs/vert.jpg', vertical)
-        # cv2.imshow("vertical", vertical)
-        # cv2.waitKey(0)
-
         # Find the contours
         contours, _ = cv2.findContours(vertical, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
         
@@ -158,12 +157,12 @@ class DirectionIdentification(object):
             cY = int(M["m01"] / M["m00"])
 
             # Check if the center y is towards the top of the image
-            if (cY < self._width_div_4 ):
+            if (cY < self._height_div_4 ):
                 print('----------- Vertical line on the top -----------')
                 vert_top =1
 
             # Check if the center y is towards the bottom of the image
-            elif( cY > 3*self._width_div_4):
+            elif( cY > 3*self._height_div_4):
                 print('----------- Vertical line on the bottom -----------')
                 vert_bottom=1
 
@@ -172,6 +171,7 @@ class DirectionIdentification(object):
 
     # Find the direction of the power supply/voltage source 
     def find_power_supply_direction(self):
+
         # Get endpoints of an element in the horizontal and vertical direction
         [horizontal,horz_left,horz_right] = self.get_horizontal_contours()
         [vertical,vert_top,vert_bottom] = self.get_vertical_contours()
@@ -179,25 +179,9 @@ class DirectionIdentification(object):
         # Combine both the horizontal and vertical binary images to find the 
         # plus sign on the circuit component
         and_result = cv2.bitwise_and(horizontal,vertical)
-        # cv2.imwrite('gifs/and.jpg', and_result)
-        # cv2.imshow("together", and_result)
-        # cv2.waitKey(0)
 
         # Get the middle of the image
-        middle_results = and_result[self._height_div_4:3*self._height_div_4,self._width_div_4:3*self._width_div_4]
-
-        #Creating a white square with NUMPY  
-        s = max(self._img_height,self._img_width)
-        f = np.ones((s,s),np.uint8)*255
-        #Getting the centering position 
-        ax,ay = (s - middle_results.shape[1])//2,(s - middle_results.shape[0])//2
-        
-        #Pasting the 'image' in a centering position
-        f[ay:middle_results.shape[0]+ay,ax:ax+middle_results.shape[1]] = middle_results
-        # cv2.imwrite('gifs/and_middle.jpg', f)
-
-        # cv2.imshow("mid_Res", f)
-        # cv2.waitKey(0)
+        middle_results = and_result[self._width_div_4:3*self._width_div_4,self._height_div_4:3*self._height_div_4]
 
         # Find contours
         contours, _ = cv2.findContours(middle_results, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
@@ -207,14 +191,14 @@ class DirectionIdentification(object):
         M_mid = cv2.moments(c)
         
         # Calculate x,y coordinate of center
-        cX_mid = int(M_mid["m10"] / M_mid["m00"]) + self._width_div_4
-        cY_mid = int(M_mid["m01"] / M_mid["m00"]) + self._height_div_4
+        cX_mid = int(M_mid["m10"] / M_mid["m00"]) + self._height_div_4
+        cY_mid = int(M_mid["m01"] / M_mid["m00"]) + self._width_div_4
 
         # Check if the circuit component is vertical
         if((vert_top+vert_bottom)>(horz_left+horz_right)):
 
             # Check where the 'plus' sign is
-            if (cY_mid < 2*self._width_div_4):
+            if (cY_mid < 2*self._height_div_4):
                 print('Plus on top')
                 self._rot_idx = 2
             else:
@@ -224,7 +208,7 @@ class DirectionIdentification(object):
         # The circuit element is horizontal
         else:
             # Check where the 'plus' sign is    
-            if (cX_mid < 2*self._height_div_4):
+            if (cX_mid < 2*self._width_div_4):
                 print('Plus on left')
                 self._rot_idx = 1
             else:
@@ -259,97 +243,111 @@ class DirectionIdentification(object):
         [_,horz_left,horz_right] = self.get_horizontal_contours()
         [_,vert_top,vert_bottom] = self.get_vertical_contours()
 
-        # Calculate the moment of the whole binary image
-        M_arrow = cv2.moments(self._bw)
-        cX_arrow = int(M_arrow["m10"]  / M_arrow["m00"])
-        cY_arrow = int(M_arrow["m01"]  / M_arrow["m00"])
-
-        # # Get the middle of the image
-        # middle_results = self._bw[self._height_div_4:3*self._height_div_4,self._width_div_4:3*self._width_div_4]
-
-        # # Calculate moments of middle image
-        # M_mid = cv2.moments(middle_results)
-        
-        # # Calculate x,y coordinate of center
-        # cX_mid = int(M_mid["m10"] / M_mid["m00"]) + self._width_div_4
-        # cY_mid = int(M_mid["m01"] / M_mid["m00"]) + self._height_div_4
-
-        # # cv2.imshow('all',self._bw)
-        # cv2.imwrite('gifs/middle.jpg', middle_results)
-        # cv2.imshow("mid", middle_results)
-        # cv2.waitKey(0)
-
         # Check if the circuit component is vertical
         if((vert_top+vert_bottom)>(horz_left+horz_right)):
             
-             # Get the middle of the image
-            middle_results = self._bw[self._height_div_3:2*self._height_div_3,:]
-            # Find contours
-            contours, _ = cv2.findContours(middle_results, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-            c = max(contours, key = cv2.contourArea)
+            # Get the middle of the image
+            middle_results = self._bw[self._width_div_4:3*self._width_div_4,:]
 
-            # Calculate moments of middle image
-            M_mid = cv2.moments(c)
-            
-            # Calculate moments of middle image
-            # M_mid = cv2.moments(middle_results)
-            
-            # Calculate x,y coordinate of center
-            cX_mid = int(M_mid["m10"] / M_mid["m00"]) + self._width_div_3
-            cY_mid = int(M_mid["m01"] / M_mid["m00"]) + self._height_div_3
+            # Find the dimensions of the middle region
+            [h_mid,w_mid] = middle_results.shape[0:2]
 
-            # cv2.imshow('all',self._bw)
-            # cv2.imwrite('gifs/middle.jpg', middle_results)
-            # cv2.imshow("mid", middle_results)
-            # cv2.waitKey(0)
+            # Separate the middle region into quadrants
+            top_left = middle_results[1:int(h_mid/2),1:int(w_mid/2)]
+            top_right = middle_results[1:int(h_mid/2),int(w_mid/2):w_mid]
+            bot_left = middle_results[int(h_mid/2):h_mid,1:int(w_mid/2)]
+            bot_right = middle_results[int(h_mid/2):h_mid,int(w_mid/2):w_mid]
 
-            # Check if the moments shifted to the top which suggests the diode
-            # is pointing up
-            if(cY_arrow < cY_mid):
+            # List of all sections
+            each_section = [top_left,top_right,bot_left,bot_right]
+            each_section_x_coord = np.array([0,0,0,0])
+
+            # Loop through each quadrant
+            for i in range(0,len(each_section)):
+
+                # Find contours
+                contours, _ = cv2.findContours(each_section[i], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+
+                # Find the maximum contour
+                c = max(contours, key = cv2.contourArea)
+
+                # Calculate moments 
+                M_mid = cv2.moments(c)
+                           
+                # Calculate x,y coordinate of center
+                cX_mid = int(M_mid["m10"] / M_mid["m00"]) 
+                cY_mid = int(M_mid["m01"] / M_mid["m00"]) 
+
+                # Place the x coordinate in an array
+                each_section_x_coord[i] = cX_mid
+                # print(cX_mid,cY_mid)
+
+            # Find the difference between the y coordinates of the top two 
+            # quadrants. Do the same for the bottom quadrants
+            top_x_values = (each_section_x_coord[1]-each_section_x_coord[0])
+            bot_x_values = (each_section_x_coord[3]-each_section_x_coord[2])
+            # print(top_y_values,bot_y_values)
+
+            # Check if the top difference is less than the bottom difference, 
+            # if it yes, then the diode points up
+            if(top_x_values < bot_x_values):
                 print('Vertical diode to the top')
                 self._rot_idx = 0
             else:
                 print('Vertical diode to the bottom')
                 self._rot_idx = 2
-            # print('y shift')
-            # print(cY_arrow,cY_mid)
-            # print('x shift')
-            # print(cX_arrow,cX_mid)
 
         # The circuit element is horizontal
         else:
-             # Get the middle of the image
-            middle_results = self._bw[:,self._width_div_3:2*self._width_div_3]
-            # Find contours
-            contours, _ = cv2.findContours(middle_results, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-            c = max(contours, key = cv2.contourArea)
 
-            # Calculate moments of middle image
-            M_mid = cv2.moments(c)
-            # Calculate moments of middle image
-            # M_mid = cv2.moments(middle_results)
-            
-            # Calculate x,y coordinate of center
-            cX_mid = int(M_mid["m10"] / M_mid["m00"]) + self._width_div_3
-            cY_mid = int(M_mid["m01"] / M_mid["m00"]) + self._height_div_3
+            # Get the middle of the image
+            middle_results = self._bw[:,self._height_div_4:3*self._height_div_4]
+            [h_mid,w_mid] = middle_results.shape[0:2]
 
-            # cv2.imshow('all',self._bw)
-            # cv2.imwrite('gifs/middle.jpg', middle_results)
-            # cv2.imshow("mid", middle_results)
-            # cv2.waitKey(0)
+            # Separate the middle region into quadrants
+            top_left = middle_results[1:int(h_mid/2),1:int(w_mid/2)]
+            top_right = middle_results[1:int(h_mid/2),int(w_mid/2):w_mid]
+            bot_left = middle_results[int(h_mid/2):h_mid,1:int(w_mid/2)]
+            bot_right = middle_results[int(h_mid/2):h_mid,int(w_mid/2):w_mid]
 
-            # Check if the moments shift to the left which suggests the diode
-            # is pointing left
-            if(cX_arrow < cX_mid):
+            # List of all sections
+            each_section = [top_left,top_right,bot_left,bot_right]
+            each_section_y_coord = np.array([0,0,0,0])
+
+            # Loop through each quadrant
+            for i in range(0,len(each_section)):
+
+                # Find contours
+                contours, _ = cv2.findContours(each_section[i], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+
+                # Find the biggest contour
+                c = max(contours, key = cv2.contourArea)
+
+                # Calculate moments 
+                M_mid = cv2.moments(c)
+          
+                # Calculate x,y coordinate of center
+                cX_mid = int(M_mid["m10"] / M_mid["m00"]) 
+                cY_mid = int(M_mid["m01"] / M_mid["m00"]) 
+
+                # Reccord the y coordinate
+                each_section_y_coord[i] = cY_mid
+                # print(cX_mid,cY_mid)
+
+            # Find the difference between the x coordinates of the left  
+            # quadrants. Do the same for the right quadrants
+            left_y_values = (each_section_y_coord[0]-each_section_y_coord[2])
+            right_y_values = (each_section_y_coord[1]-each_section_y_coord[3])
+            # print(left_y_values,right_y_values)
+
+            # Check if the right difference is less than the left difference, 
+            # if it yes, then the diode points left
+            if(left_y_values > right_y_values):
                 print('Horizontal diode to the left')
                 self._rot_idx = 3
             else:
                 print('Horizontal diode to the right')
                 self._rot_idx = 1
-            # print('y shift')
-            # print(cY_arrow,cY_mid)
-            # print('x shift')
-            # print(cX_arrow,cX_mid)
 
         # Return the rotation index
         return self._rot_idx

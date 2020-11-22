@@ -1,3 +1,9 @@
+# AMME4710 - EJH Detector 2020
+# Circuit Digitaliser 
+
+# 470205127
+# 470355499
+# 470425954
 
 # Import necessary packages
 import numpy as np
@@ -8,13 +14,12 @@ import cv2
 class TrainedModel(object):
     def __init__(self):
 
-        # Initialise the image sizes 
-        # self._image_size = (28,28)
-        # self._tensor_size = (1,28,28,1)
+        # Initialise the image size
         self._image_size = (56,56)
         self._tensor_size = (1,56,56,1)
+
         # Load model from file 
-        self._loaded_model = load_model('best_one_yet.h5')
+        self._loaded_model = load_model('trained_CNN_model.h5')
 
         # List of component names: diodes, resistor, inductor,capacitor,ground, voltage
         self._class_names = np.array( ['d','r','i','c','g','v'])
@@ -29,27 +34,19 @@ class TrainedModel(object):
     # Predict a single image 
     def predict_image(self,img):
        
-
-        # Resize the given image to (28,28) for the model 
-        # _img_resize = cv2.resize(img, self._image_size )
-
         #Getting the bigger side of the image
         s = max(img.shape[0:2])
 
-        #Creating a dark square with NUMPY  
+        # Create a white square as the background of the image
         f = np.ones((s,s),np.uint8)*255
-        #Getting the centering position 
+
+        # Get the centering position 
         ax,ay = (s - img.shape[1])//2,(s - img.shape[0])//2
         
-        #Pasting the 'image' in a centering position
+        # Paste the 'image' in the center of the white square
         f[ay:img.shape[0]+ay,ax:ax+img.shape[1]] = img
-        
-        #Showing results (just in case) 
-        # cv2.imwrite('gifs/squared.jpg', f)
-        cv2.imshow("IMG",f)
-        #A pause, waiting for any press in keyboard
-        cv2.waitKey(0)
 
+        # Resize the image 
         _img_resize = cv2.resize(f, self._image_size )
 
         # Convert into a tensor for the model
