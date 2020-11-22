@@ -9,221 +9,186 @@ import cv2
 import numpy as np
 from vis import circuit_plot
 
-'''from dataclasses import dataclass
-
-@dataclass'''
 
 class ComponentClass:
     def __init__(self,type,rot,point1,point2,source_mask):
+        #Define all the class properties
         self.type=type
         self.rot=rot
         self.__point1=np.asarray(point1)
         self.__point2=np.asarray(point2)
+        #Scaled down bounding box
         __small_offset=np.asarray([3,3])
         self.small_point1=self.__point1+__small_offset
         self.small_point2=self.__point2-__small_offset
+
+        #Make the mask for both pins (this can be extended to more pins in a child class)
         self.pin_rectangles=[]
         self.pin_rectangles.append(np.zeros_like(source_mask))
         self.pin_rectangles.append(np.zeros_like(source_mask))
-       # cv2.imshow("circuit",source_mask)
-        #cv2.waitKey(0)
+
+        #Define the pin sizes based on the rotation of the component
         self.__generate_pin_boxes()
-        print("Direction is "+str(rot))
+        #print("Direction is "+str(rot))
         if rot==None:
-              raise Exception("No rotation") 
-        print(point1)
-        print(point2)
+              raise Exception("No rotation given to the class") 
+        #Debugging code to show both of the pins
         # cv2.imshow("positive",self.pin_rectangles[0])
         # cv2.waitKey(0)
         # cv2.imshow("negative",self.pin_rectangles[1])
         # cv2.waitKey(0)
 
+    #Generate the pin boxes
     def __generate_pin_boxes(self): 
         #Positive Bottom
+        '''
+        -
+        +
+        '''
         if(self.rot==0):
+            #Find the middle along the y axis
             midPointy=(self.__point2[1]+self.__point1[1])/2
+            #Generate the top pin and bottom pin
             top1=self.__point1
             top2=np.asarray([self.__point2[0],midPointy])
 
             bottom1=np.asarray([self.__point1[0],midPointy])
             bottom2=self.__point2
 
-            #Index 0 is always negative
+            #Store so index 0 is always negative
             self.pin_rectangles[0]=cv2.rectangle(self.pin_rectangles[0],tuple(top1.astype(int)),tuple(top2.astype(int)), 255, -1) 
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(bottom1.astype(int)),tuple(bottom2.astype(int)), 255, -1) 
+        '''
+        +-
+        '''
         elif(self.rot==1):
+            #Find the middle along the x axis
             midPointx=(self.__point2[0]+self.__point1[0])/2
+            #Generate the left and right pin
             left1=self.__point1
             left2=np.asarray([midPointx,self.__point2[1]])
 
             right1=np.asarray([midPointx,self.__point1[1]])
             right2=self.__point2
 
-             #Index 0 is always negative
+            #Store so index 0 is always negative
             self.pin_rectangles[0]=cv2.rectangle(self.pin_rectangles[0],tuple(right1.astype(int)),tuple(right2.astype(int)), 255, -1) 
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(left1.astype(int)),tuple(left2.astype(int)), 255, -1)            
-
+        '''
+        +
+        -
+        '''
         elif(self.rot==2):
+            #Find the middle along the y axis
             midPointy=(self.__point2[1]+self.__point1[1])/2
+            #Generate the top pin and bottom pin
             top1=self.__point1
             top2=np.asarray([self.__point2[0],midPointy])
 
             bottom1=np.asarray([self.__point1[0],midPointy])
             bottom2=self.__point2
 
-            #Index 0 is always negative
+            #Store so index 0 is always negative
             self.pin_rectangles[0]=cv2.rectangle(self.pin_rectangles[0],tuple(bottom1.astype(int)),tuple(bottom2.astype(int)), 255, -1) 
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(top1.astype(int)),tuple(top2.astype(int)), 255, -1) 
 
+        '''
+        -+
+        '''
         elif(self.rot==3):
+            #Find the middle along the x axis
             midPointx=(self.__point2[0]+self.__point1[0])/2
+            #Generate the left and right pin
             left1=self.__point1
             left2=np.asarray([midPointx,self.__point2[1]])
 
             right1=np.asarray([midPointx,self.__point1[1]])
             right2=self.__point2
 
-             #Index 0 is always negative
+            #Store so index 0 is always negative
             self.pin_rectangles[0]=cv2.rectangle(self.pin_rectangles[0],tuple(left1.astype(int)),tuple(left2.astype(int)), 255, -1)   
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(right1.astype(int)),tuple(right2.astype(int)), 255, -1) 
 
     def check_intersect(self,line_mask):
+        #Check both pins to see if they intersect the mask of the line
         for pin_index,pin_mask in enumerate(self.pin_rectangles):
-            #print(pin_index)
             intersect=cv2.bitwise_and(line_mask,pin_mask)
-           # cv2.imshow("or",cv2.bitwise_or(line_mask,pin_mask))
+            #Debug image display
+            #cv2.imshow("or",cv2.bitwise_or(line_mask,pin_mask))
             #cv2.waitKey(0)
+
+            #If we have more than one pixel then there is an intersection
             if np.concatenate(intersect).sum() >0:
                 #If positive return 1
                 return pin_index+1
-                '''if pin_index==0:
-                    return 1
-                else:
-                    return -1'''
+
 
         return None
-            #np.concatenate(skel).sum()
-        #print("Private method") 
-'''
-def adj_builder(mask,components):
-    #Create a mask with just the lines
-
-    #Scale up compoents by small amount 
-
-    #Loop through lines
-
-        #Store temp intersetions
-        #store connection index and +,- if negative or positve
-
-
-        #if no intersection don't add this line to adj
-        #or if only one intersection invalid
-'''
-
-
-
 
 
 def circuit_decode(mask,components):
-    '''
-    # Import images 
-    imgGray=cv2.imread('custom_mask.jpg', cv2.IMREAD_GRAYSCALE)
-    ret,mask = cv2.threshold(imgGray,127,255,cv2.THRESH_BINARY)
-   # cv2.imshow("mask",mask)
-    cv2.waitKey(0)
-
-    # creating list        
-    components = []  
-    
-    # appending instances to list 
-    components.append(ComponentClass('v',0,(575,167),(746,352),mask))
-    components.append(ComponentClass('r',0,(306,239),(452,412),mask))
-    components.append(ComponentClass('r',0,(0,216),(153,415),mask))
-    '''
-    # TODO: REMOVE THIS bit
-    #ret,mask = cv2.threshold(mask,127,255,cv2.THRESH_BINARY)
-    #cv2.imshow("mask",mask)
-    #Make a mask for components
+    #Create a mask the same size of the image
     component_mask=np.zeros_like(mask)
+    #Export the component type for later displaying
     components_type_export=[]
+
+    #Loop through all the components and make one big mask with all the component bounding boxes
     for comp_idx,component in enumerate(components): 
-        #print( obj.name, obj.roll, sep =' ' ) 
         component_mask=cv2.rectangle(component_mask, tuple(component.small_point1), tuple(component.small_point2), 255, -1)
        # cv2.imshow("components",component_mask)
         components_type_export.append(component.type+str(comp_idx))
         #cv2.waitKey(0)
     
+    #Remove the components from the circuit leaving behind the lines
     line_mask=cv2.bitwise_and(mask,cv2.bitwise_not(component_mask))
 
-    cv2.imshow("lines",line_mask)
-    cv2.waitKey(0)
+    # cv2.imshow("lines",line_mask)
+    # cv2.waitKey(0)
     number_of_components=len(components)
-    #adj_matrix=np.zeros((number_of_components,number_of_components))
-    #adj_matrix=np.asarray([])
-
     adj_matrix=np.empty((0,number_of_components), int)
     contours, _ = cv2.findContours(line_mask,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
+
+    #Loop through all the line blobs and look for intersections
     for line_idx, line in enumerate(contours):
-        #print(line_idx)
-        #If you dont' do [cnt] it takes cnt to be a list of sub contours ie.e. each pixel on the edge is a contour
-        #filling a pixel doesn't make sense
+        #Redraw the line blob by itself
         line_mask=cv2.drawContours(np.zeros_like(mask),[line], -1, 255, cv2.FILLED)
         #cv2.imshow("contours",line_mask)
         #cv2.waitKey(0)
         connection_found=False
+        #Loop through all the compoents
         for component_idx,component in enumerate(components):
-            print(component_idx)
+            #print(component_idx)
+
+            #Do we have an intersection
             pintype=component.check_intersect(line_mask)
             if pintype is not None:
                 #We have a connection
                 #Have we had a previous connection i.e. is the line in adj matrix
                 if connection_found==False:
-                    #adj_matrix=np.pad(adj_matrix,(0,1))
-
-                    #Append matrix only if lines are valid
+                    #Add the new line to the matrix
                     adj_matrix=np.append(adj_matrix, np.zeros((1,len(components))), axis=0)
                     connection_found=True
-                #Have we already added a row
-                
-                #Get the most recent row which corresponds to a line with acutal connections
-                adj_matrix[-1,component_idx]=pintype
-                #adj_matrix[component_idx,number_of_components+line_idx-1]=pintype
-                #adj_matrix[number_of_components+line_idx-1,component_idx]=pintype
-                #might just have an array, each row is the cocmponent and each col is the line
-                #or vise versa
-        print(adj_matrix)
 
-        #Check if empty then test to remove rows
-        
+                #Store the connection type
+                adj_matrix[-1,component_idx]=pintype
+        #After checking all the components if we only have 1 one interection than it isn't a line
+        #A line needs minimum 2 endpoints
         if not(adj_matrix.size==0):
             found_connect_idx=np.where(adj_matrix[-1]>0)[0]
 
             #All lines should have 2 connections
             if len(found_connect_idx) < 2:
-                #adj_matrix[-1]=[]
-                #if (components_type_export[found_connect_idx[0]] =='g')
-
+                #Remove the line
                 adj_matrix=np.delete(adj_matrix,-1,0)
             
 
 
-    print(adj_matrix)
-        # If valid line
-        
-    '''
-    components.append(ComponentClass('Akash',2)) 
-    components.append(geeks('Deependra',40)) 
-    components.append(geeks('Reaper',44))
-    '''
 
 
-
-    #component_mask=cv.rectangle(img, pt1, pt2, color[, thickness[, lineType[, shift]]]	)
-    # cv2.destroyAllWindows()
+    #Return the component types and the connections
     return components_type_export,adj_matrix
-    #circuit_plot(components_type_export,adj_matrix)
     
