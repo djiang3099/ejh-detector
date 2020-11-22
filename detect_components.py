@@ -11,6 +11,10 @@ import time
 
 from helper import *
 
+# This function takes in a CV2 image input and performs a series of morphological operations to 
+# identify component locations as bounding boxes. 
+
+# Note that cv2.imshow() and related lines have been commented in compliance with Google Colab
 def detect_components(img):
     # Resize the image to fit on the screen
     height, width = img.shape[:2]
@@ -22,26 +26,20 @@ def detect_components(img):
         scale = width/lim_dim
     else:
         scale = height/lim_dim
-
     img = cv2.resize(img, ( int(width/scale), int(height/scale) ), dst=img, interpolation = cv2.INTER_CUBIC)
+    
+    # Add padding to enable coherent cropping later
     img_pad = cv2.copyMakeBorder(img, pad, pad, pad, pad, cv2.BORDER_DEFAULT)
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
     # Preprocess the image to extract components
     binarised = get_mask(gray, pad)
+    # cv2.imshow('Og mask', binarised)
 
     # Dilation to connect the circuit up
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30,30))
-    # closing = cv2.dilate(closing, kernel)
-    
-    # Canny edge detection 
-    # canny = cv2.Canny(binarised, 100, 200)
-    cv2.imshow('Og mask', binarised)
-    # cv2.waitKey(0)
-    # canny_dil = cv2.dilate(canny, kernel)   # Dilate to join them up 
-    canny_dil = cv2.morphologyEx(binarised, cv2.MORPH_CLOSE, kernel, iterations=1)
-    cv2.imshow('Og mask', canny_dil)
-    # cv2.waitKey(0)
+                canny_dil = cv2.morphologyEx(binarised, cv2.MORPH_CLOSE, kernel, iterations=1)
+    # cv2.imshow('Og mask', canny_dil)
 
     # Crop the circuit out of the image and rotate to straighten
     cropped = extract_circuit(binarised, canny_dil, crop_margin=0.1)
@@ -60,28 +58,18 @@ def detect_components(img):
     cropped = cv2.resize(cropped, ( int(roi_width/scale), int(roi_height/scale) ), interpolation = cv2.INTER_CUBIC)
     markup = cv2.resize(markup, ( int(roi_width/scale), int(roi_height/scale) ), interpolation = cv2.INTER_CUBIC)
     cropped_img = markup.copy()
-    cv2.imshow('bin cropped', cropped)
-    # cv2.waitKey(0)
+    # cv2.imshow('Binary cropped', cropped)
     
     _, cropped = cv2.threshold(cropped, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    # cv2.imshow('cropped', cropped)
 
     ##### Perform component extraction on this cropped image #####
-    # Gaussian Blur
-    # gray_crop = cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY)
-    # thr_crop = get_mask(gray_crop)
-    cv2.imshow('bin cropped', cropped)
+    # cv2.imshow('bin cropped', cropped)
 
     big_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (35,35))
 
     # Closing operation to turn components into blobs
     mask = cv2.morphologyEx(cropped, cv2.MORPH_CLOSE, big_kern)
-    # cv2.imshow('mask', mask)
-    # cv2.waitKey(0) 
-    # view_contours(mask)
     mask = fill_small_contours(mask)
-    # cv2.imshow('mask', mask)
-    # cv2.waitKey(0) 
 
     # Erosion to get rid of lines
     init_cont = len(cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2])
@@ -89,26 +77,23 @@ def detect_components(img):
     peaked = False
     found = False
     conts = []
+
     # Slowly erode the lines with increasing kernel size to determine linewidth, when 
     # components begin forming separate contours
     for i in range(3,25):
         mid_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (i,i))
         mask2 = cv2.erode(mask, mid_kern, iterations=1)
         contours, _ = cv2.findContours(mask2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-        # print(len(contours))
         conts.append(len(contours))
         if max_cont < len(contours): 
             if len(contours) - max_cont > 2:
                 peaked = True
-                # print("Peaked!")
             max_cont = len(contours)
         elif (max_cont+init_cont)/2 >= len(contours) and peaked:
             print("Peak found at kernel size", i)
             found = True
             break
         cv2.putText(mask2, str(i*2), (50,80), cv2.FONT_HERSHEY_COMPLEX, 1, 255)
-        # cv2.imshow('mask', mask2)
-        # cv2.waitKey(0) 
 
     # Not found when the circuit is dense
     if not found:
@@ -116,27 +101,25 @@ def detect_components(img):
         print('Peak asssumed to be at', line_width)
     else:
         line_width = i*2
-    print(line_width)
+
     # Set a cap on the linewidth
     line_width = max(20, min(30, line_width))
-    print(line_width)
+    print('Line width set to:', line_width)
+
     # Do it all over again, moderated by the linewidth
     big_line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20+line_width,20+line_width))
     line_kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (line_width,line_width))
 
     # Closing operation to turn components into blobs
     mask_line = cv2.morphologyEx(cropped, cv2.MORPH_CLOSE, big_line_kern)
-    cv2.imshow('mask_line', mask_line)
-    # cv2.waitKey(0)
+    # cv2.imshow('mask_line', mask_line)
 
     mask_line = fill_small_contours(mask_line)
-    cv2.imshow('mask_line', mask_line)
-    # cv2.waitKey(0)
+    # cv2.imshow('mask_line', mask_line)
 
     # Get rid of the lines
     mask_no_line = cv2.morphologyEx(mask_line, cv2.MORPH_OPEN, line_kern)
-    cv2.imshow('mask_line', mask_no_line)
-    # cv2.waitKey(0)
+    # cv2.imshow('mask_line', mask_no_line)
 
     small_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
     mask_no_line = cv2.morphologyEx(mask_no_line, cv2.MORPH_CLOSE, small_kern)
@@ -145,8 +128,8 @@ def detect_components(img):
     bboxes = np.array([0,0,0,0])
     contours, _ = cv2.findContours(mask_no_line, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
-        # print(bboxes.shape)
         x,y,w,h = cv2.boundingRect(contour)
+
         # Iterate here to potentially break down the contour into small ones
         sub_boxes = decompose_contour(cropped, [x,y,w,h], line_width)
         if sub_boxes.ndim > 1:
@@ -156,26 +139,17 @@ def detect_components(img):
     filt_bboxes = reject_area_outliers(bboxes[1:])
     for x,y,w,h in filt_bboxes:
         cv2.rectangle(markup, (int(x-0.15*w), int(y-0.15*h)), (int(x+1.15*w), int(y+1.15*h)), (0,255,0), 2)
-        # cv2.putText(markup, str(cv2.contourArea(contour)), (x,y+h), cv2.FONT_HERSHEY_COMPLEX, 1, (0,70,255))
 
-    cv2.imshow('cropped', markup)
-    print('Press any key to continue...')
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.imshow('cropped', markup)
+    # print('Press any key to continue...')
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     return filt_bboxes, cropped_img, mask_line
 
 if __name__ == '__main__':
     # Import images 
-    # for i in range(39,43):
-    #     path = './Data/Circuits/' + str(i) + '.jpg'
-    for i in range(0,6):
-        path = './Data/Examples/' + str(i) + '.PNG'
-        print(i)
+    for i in range(39,43):
+        path = './Data/Circuits/' + str(i) + '.jpg'
+        print('Image number', i)
         img = cv2.imread(path) 
         bboxes = detect_components(img)
-    # print(bboxes)
-    # names = ['5','10','15','15manny','20','25','35','40','40many','60','70','70_2','80','80_2','80_3','90','90_2']
-    # for i in range(1, len(names)):
-    #     path = './scale/' + names[i] + '.jpg'
-    #     img = cv2.imread(path)
-    #     bboxes = detect_components(img)
