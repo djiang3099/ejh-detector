@@ -38,7 +38,7 @@ def detect_components(img):
 
     # Dilation to connect the circuit up
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30,30))
-                canny_dil = cv2.morphologyEx(binarised, cv2.MORPH_CLOSE, kernel, iterations=1)
+    canny_dil = cv2.morphologyEx(binarised, cv2.MORPH_CLOSE, kernel, iterations=1)
     # cv2.imshow('Og mask', canny_dil)
 
     # Crop the circuit out of the image and rotate to straighten
@@ -140,15 +140,15 @@ def detect_components(img):
     for x,y,w,h in filt_bboxes:
         cv2.rectangle(markup, (int(x-0.15*w), int(y-0.15*h)), (int(x+1.15*w), int(y+1.15*h)), (0,255,0), 2)
 
-    # cv2.imshow('cropped', markup)
-    # print('Press any key to continue...')
-    # cv2.waitKey(0)
+    cv2.imshow('cropped', markup)
+    print('Press any key to continue...')
+    cv2.waitKey(0)
     # cv2.destroyAllWindows()
     return filt_bboxes, cropped_img, mask_line
 
 if __name__ == '__main__':
     # Import images 
-    for i in range(39,43):
+    for i in range(1,3):
         path = './Data/Circuits/' + str(i) + '.jpg'
         print('Image number', i)
         img = cv2.imread(path) 
