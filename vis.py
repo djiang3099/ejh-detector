@@ -16,29 +16,24 @@ def circuit_plot(compNames,adj):
     G = nx.Graph()
 
 
-    # adj=np.asarray([[2,2,2],
-    # [1,1,1]])
-    #!!print(adj)
-    # compNames=np.asarray(['v','d1','r2'])
     lineNames=[]
 
+    #Give the lines names
     for line_idx in range(len(adj)):
         lineNames.append('l'+str(line_idx))
         print(line_idx)
     lineNames=np.asarray(lineNames)
-    '''
-    for element in compNames:
-        G.add_node(element,image= mpimg.imread("comp/"+element[0]+".png"),size=0.1)'''
+
+    #Add nodes from the components and lines
     G.add_nodes_from(compNames)
     G.add_nodes_from(lineNames)
 
+    #Define the connections between components and lines
     for lineIndex in range(len(adj)):
         print(adj[lineIndex,:])
         for compIndex, connectionType in enumerate(adj[lineIndex,:]):
             if connectionType>0:
-                #We have a connection
-                #print(compNames[compIndex])
-                #could use weight as an alternative
+                #Label the connection type as postive or negative
                 if connectionType==1:
                     G.add_edge(compNames[compIndex],lineNames[lineIndex],label='-ve')
                 else:
@@ -46,15 +41,12 @@ def circuit_plot(compNames,adj):
 
 
 
-    #pos=nx.planar_layout(G)
 
-
+    #Draw the graph
     #How to spread out the graph
     pos=nx.planar_layout(G)
     #nx.draw(G,pos,with_labels=True,node_color='#ffffff')
     nx.draw(G,pos,node_color='#ffffff')
-    #nx.draw(G,pos,with_labels=True)
-
     labels = nx.get_edge_attributes(G,'label')
     nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
 
@@ -67,6 +59,7 @@ def circuit_plot(compNames,adj):
     trans = ax.transData.transform
     trans2 = fig.transFigure.inverted().transform
     imsize = 0.1 # this is the image size
+    #Loop through the nodes and overlay and image
     for n in G.nodes():
         (x,y) = pos[n]
         xx,yy = trans((x,y)) # figure coordinates
@@ -75,6 +68,15 @@ def circuit_plot(compNames,adj):
         a.imshow(mpimg.imread("comp/"+n[0]+".png"))
         a.set_aspect('equal')
         a.axis('off')
-    print(compNames)
-    print(adj)
+
+
+    #DEBUG CODE FOR JUST laabels
+    ''''
+    pos=nx.planar_layout(G)
+    nx.draw(G,pos,with_labels=True,node_color='#ffffff')
+    #nx.draw(G,pos,node_color='#ffffff')
+    labels = nx.get_edge_attributes(G,'label')
+    nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
+    '''
+
     plt.show()
