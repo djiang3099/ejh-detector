@@ -59,9 +59,9 @@ class ComponentClass:
             self.pin_rectangles[0]=cv2.rectangle(self.pin_rectangles[0],tuple(top1.astype(int)),tuple(top2.astype(int)), 255, -1) 
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(bottom1.astype(int)),tuple(bottom2.astype(int)), 255, -1) 
-        '''
-        +-
-        '''
+            '''
+            +-
+            '''
         elif(self.rot==1):
             #Find the middle along the x axis
             midPointx=(self.__point2[0]+self.__point1[0])/2
@@ -76,10 +76,10 @@ class ComponentClass:
             self.pin_rectangles[0]=cv2.rectangle(self.pin_rectangles[0],tuple(right1.astype(int)),tuple(right2.astype(int)), 255, -1) 
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(left1.astype(int)),tuple(left2.astype(int)), 255, -1)            
-        '''
-        +
-        -
-        '''
+            '''
+            +
+            -
+            '''
         elif(self.rot==2):
             #Find the middle along the y axis
             midPointy=(self.__point2[1]+self.__point1[1])/2
@@ -95,9 +95,9 @@ class ComponentClass:
 
             self.pin_rectangles[1]=cv2.rectangle(self.pin_rectangles[1],tuple(top1.astype(int)),tuple(top2.astype(int)), 255, -1) 
 
-        '''
-        -+
-        '''
+            '''
+            -+
+            '''
         elif(self.rot==3):
             #Find the middle along the x axis
             midPointx=(self.__point2[0]+self.__point1[0])/2
