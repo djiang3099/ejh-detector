@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from detect_components import *
 from circuitDecode import *
-from main_object_detector import *
+from component_classifier import *
 
 if __name__ == '__main__':
     print('Running main')
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             imgplot = plt.imshow(comp_img)
             plt.show()
 
-            [element,rot_idx] = component_detector(comp_img)
+            [element,rot_idx] = component_classifier(comp_img)
             # if not(element=='x'):
             components.append(ComponentClass(element,rot_idx,(x,y),(x+w,y+h),mask))
 
