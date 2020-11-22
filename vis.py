@@ -69,4 +69,14 @@ def circuit_plot(compNames,adj):
         a.set_aspect('equal')
         a.axis('off')
 
+
+    #DEBUG CODE FOR JUST laabels
+    ''''
+    pos=nx.planar_layout(G)
+    nx.draw(G,pos,with_labels=True,node_color='#ffffff')
+    #nx.draw(G,pos,node_color='#ffffff')
+    labels = nx.get_edge_attributes(G,'label')
+    nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
+    '''
+
     plt.show()
